@@ -1,0 +1,11 @@
+data/
+*.db
+*.xlsx
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec
+gen_test_data.py
+run_tests.py
+main.py

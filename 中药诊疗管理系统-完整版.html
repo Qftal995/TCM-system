@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中药诊疗管理系统</title>
+<style>
+:root {
+  --wood-dark: #5C3322; --wood-mid: #7A4C32; --wood-light: #A67B5B;
+  --cream: #F5F0E8; --cream-dark: #E8DFD2; --paper: #FDF9F1;
+  --gold: #C8A45C; --gold-light: #E0C88E;
+  --text-dark: #3E2723; --text-mid: #5D4037; --text-light: #8D6E63;
+  --warn-stock: #E0903C; --warn-expiry: #C8A03C; --warn-expired: #D4645C;
+  --warn-stock-bg: #FDF3EA; --warn-expiry-bg: #FDF8EB; --warn-expired-bg: #FDF0EF;
+  --border: #D7CCC8; --green: #5D8A5C;
+  --radius: 4px; --transition: 0.2s;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:"SimSun","KaiTi","Microsoft YaHei",serif;
+  background:#3E2723; display:flex; justify-content:center; align-items:center;
+  min-height:100vh; padding:16px;
+}
+.app-frame{
+  width:1320px; height:860px; display:flex;
+  border-radius:6px; overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 2px #3E2723,0 0 0 5px var(--wood-light),0 0 0 7px #3E2723;
+}
+
+/* Sidebar */
+.sidebar{
+  width:220px; min-width:220px;
+  background:linear-gradient(180deg,#5C3322 0%,#3E1F0F 100%);
+  display:flex; flex-direction:column;
+  border-right:2px solid #2C1508; position:relative;
+}
+.sidebar::after{content:''; position:absolute; right:0; top:0; bottom:0; width:1px;
+  background:linear-gradient(180deg,rgba(200,164,92,.6),transparent 30%,transparent 70%,rgba(200,164,92,.6));}
+.sidebar-header{padding:24px 18px 18px; text-align:center; border-bottom:1px solid rgba(200,164,92,.2);}
+.sidebar-header .icon{font-size:30px; display:block; margin-bottom:6px;}
+.sidebar-header h2{color:var(--gold-light); font-size:16px; font-weight:normal; letter-spacing:3px; font-family:"KaiTi","SimSun",serif;}
+.sidebar-header::after{content:''; display:block; width:50px; height:2px; background:var(--gold); margin:14px auto 0; border-radius:1px;}
+.nav-list{list-style:none; padding:8px 0; flex:1;}
+.nav-item{display:flex; align-items:center; gap:10px; padding:12px 20px;
+  color:rgba(232,223,210,.65); cursor:pointer; transition:all .25s;
+  border-left:3px solid transparent; font-size:14px; letter-spacing:1px;}
+.nav-item:hover{color:rgba(232,223,210,.9); background:rgba(255,255,255,.04);}
+.nav-item.active{color:#F5F0E8; background:rgba(200,164,92,.1); border-left-color:var(--gold);}
+.nav-item .nav-dot{width:5px; height:5px; border-radius:50%; background:currentColor; opacity:.5; flex-shrink:0;}
+.nav-item.active .nav-dot{background:var(--gold); opacity:1; box-shadow:0 0 6px var(--gold);}
+.nav-badge{font-size:10px; background:var(--warn-expired); color:#fff; padding:1px 7px; border-radius:8px; margin-left:auto;}
+.sidebar-footer{padding:14px; border-top:1px solid rgba(200,164,92,.12); color:rgba(232,223,210,.35); font-size:11px; text-align:center; letter-spacing:1px;}
+
+/* Main */
+.main{flex:1; background:linear-gradient(180deg,#FDF9F1 0%,#F5F0E8 100%); display:flex; flex-direction:column; overflow:hidden;}
+.topbar{padding:14px 24px; background:linear-gradient(180deg,#FFFEF9,#FDF9F1); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px;}
+.page-title{font-size:17px; color:var(--text-dark); font-family:"KaiTi","SimSun",serif; letter-spacing:2px; white-space:nowrap;}
+.page-subtitle{font-size:12px; color:var(--text-light);}
+
+/* Buttons */
+button{font-family:inherit; cursor:pointer; transition:all .2s;}
+.btn{padding:7px 16px; border-radius:var(--radius); font-size:13px; letter-spacing:1px; display:inline-flex; align-items:center; gap:5px;}
+.btn-primary{background:var(--wood-mid); color:#FFFEF9; border:1px solid var(--wood-mid);}
+.btn-primary:hover{background:var(--wood-dark);}
+.btn-outline{background:transparent; border:1px solid #BCAAA4; color:var(--text-mid);}
+.btn-outline:hover{background:#F5F0E8; border-color:var(--wood-mid);}
+.btn-danger{background:transparent; border:1px solid var(--warn-expired); color:var(--warn-expired);}
+.btn-danger:hover{background:var(--warn-expired-bg);}
+.btn-sm{padding:5px 12px; font-size:12px;}
+.btn-gold{background:var(--gold); color:#FFFEF9; border:1px solid var(--gold);}
+.btn-gold:hover{background:#B8944A;}
+
+/* Forms */
+.form-group{display:flex; flex-direction:column; gap:4px;}
+.form-group label{font-size:12px; color:var(--text-light); letter-spacing:1px;}
+.form-group input,.form-group select,.form-group textarea{
+  padding:8px 12px; border:1px solid #C9B99A; border-radius:var(--radius);
+  font-size:13px; font-family:inherit; background:#FFFEF9; color:var(--text-dark);
+  outline:none; transition:border-color .2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  border-color:var(--wood-mid); box-shadow:0 0 0 3px rgba(122,76,50,.08);}
+.form-group textarea{resize:none; min-height:48px;}
+
+/* Cards */
+.card{background:#FFFEF9; border:1px solid var(--border); border-radius:6px; padding:18px 20px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.card-title{font-size:14px; color:var(--text-dark); font-family:"KaiTi","SimSun",serif; letter-spacing:2px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--cream-dark);}
+
+/* Content area */
+.content{padding:16px 24px; flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px;}
+
+/* Tables */
+.table-wrap{flex:1; overflow:auto; background:#FFFEF9; border:1px solid var(--border); border-radius:6px;}
+table{width:100%; border-collapse:collapse; font-size:13px;}
+thead th{background:linear-gradient(180deg,#5C3322,#4A2818); color:#E8DFD2; padding:10px 10px; text-align:left; font-weight:normal; letter-spacing:1px; font-size:12px; position:sticky; top:0; z-index:5; border-right:1px solid rgba(255,255,255,.08); white-space:nowrap;}
+thead th:last-child{border-right:none;}
+tbody td{padding:9px 10px; border-bottom:1px solid rgba(188,170,164,.2); color:var(--text-dark); white-space:nowrap;}
+tbody tr{transition:background .2s;}
+tbody tr:nth-child(even){background:rgba(232,223,210,.25);}
+tbody tr:hover{background:rgba(200,164,92,.08)!important;}
+
+/* Warning rows */
+tr.warn-stock{box-shadow:inset 3px 0 0 var(--warn-stock);}
+tr.warn-stock td{background-color:rgba(224,144,60,.08);}
+tr.warn-expiry{box-shadow:inset 3px 0 0 var(--warn-expiry);}
+tr.warn-expiry td{background-color:rgba(200,160,60,.08);}
+tr.warn-expired{box-shadow:inset 3px 0 0 var(--warn-expired);}
+tr.warn-expired td{background-color:rgba(212,100,92,.06);}
+
+.tag{display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; letter-spacing:.5px;}
+.tag-ok{background:#E8F0E6; color:#4A7A4A;}
+.tag-stock{background:#FDE8D0; color:#A06828;}
+.tag-expiry{background:#FDF0D0; color:#A08028;}
+.tag-expired{background:#FDD8D4; color:#A04038;}
+
+/* Pagination */
+.paginator{display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid var(--border); background:#FDF9F1; font-size:12px; color:var(--text-mid);}
+.paginator .pages{display:flex; gap:3px;}
+.paginator .pages button{width:30px; height:30px; border:1px solid #C9B99A; background:#FFFEF9; color:var(--text-mid); border-radius:3px; cursor:pointer; font-size:12px; font-family:inherit;}
+.paginator .pages button:hover{border-color:var(--wood-mid); color:var(--wood-dark);}
+.paginator .pages button.active{background:var(--wood-mid); color:#FFFEF9; border-color:var(--wood-mid);}
+.paginator .pages button.ellipsis{border:none; background:transparent; cursor:default;}
+.paginator .page-btn{padding:7px 14px; border:1px solid #C9B99A; background:#FFFEF9; color:var(--text-mid); border-radius:3px; cursor:pointer; font-size:12px; font-family:inherit;}
+
+/* Page visibility */
+.page{display:none; flex-direction:column; flex:1; overflow:hidden;}
+.page.active{display:flex;}
+
+/* Prescription page */
+.presc-layout{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.presc-layout .full-width{grid-column:1/-1;}
+.presc-form-row{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+.presc-form-row-2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.presc-total{text-align:right; padding:12px 0; font-size:18px; color:var(--wood-dark); font-family:"KaiTi","SimSun",serif; letter-spacing:1px;}
+.presc-total span{font-size:24px; color:var(--warn-expired);}
+.presc-actions{display:flex; gap:10px; justify-content:flex-end; align-items:center; padding-top:8px;}
+.presc-no{font-size:13px; color:var(--text-light); letter-spacing:1px;}
+
+/* Prescription preview grid */
+.presc-preview{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  padding:14px 16px; min-height:52px;
+  background:linear-gradient(135deg,#FFFEF9 0%,#F8F3E8 100%);
+  border:1px solid var(--cream-dark); border-radius:6px;
+  margin-bottom:12px; position:relative;
+}
+.presc-preview::before{
+  content:'方 笺';
+  position:absolute; top:-10px; left:16px;
+  background:var(--wood-dark); color:var(--gold-light);
+  font-size:11px; letter-spacing:3px; padding:2px 12px; border-radius:3px;
+  font-family:"KaiTi","SimSun",serif;
+}
+.presc-preview-item{
+  display:flex; align-items:baseline; justify-content:center; gap:5px;
+  padding:9px 4px; background:rgba(255,255,255,.75);
+  border:1px solid rgba(188,170,164,.25); border-radius:4px;
+  font-family:"KaiTi","SimSun",serif;
+  transition:all .2s; cursor:default;
+}
+.presc-preview-item:hover{
+  background:rgba(200,164,92,.08); border-color:rgba(200,164,92,.3);
+}
+.presc-preview-item .pname{font-size:17px; color:var(--text-dark); letter-spacing:2px;}
+.presc-preview-item .pgrams{font-size:13px; color:var(--wood-mid); font-weight:bold; white-space:nowrap;}
+.presc-preview-item .pgrams::before{content:'·'; margin-right:3px; color:var(--border);}
+.presc-preview-empty{
+  grid-column:1/-1; text-align:center; color:var(--text-light);
+  font-size:14px; padding:8px; letter-spacing:2px;
+}
+.presc-preview-total{
+  grid-column:1/-1; text-align:right; font-size:13px;
+  color:var(--text-mid); padding-top:4px;
+  border-top:1px dashed var(--cream-dark);
+  letter-spacing:1px;
+}
+.presc-preview-total strong{color:var(--warn-expired); font-size:16px;}
+
+/* Alert tabs */
+.alert-tabs{display:flex; gap:0; margin-bottom:12px;}
+.alert-tab{padding:9px 22px; border:1px solid var(--border); background:#FFFEF9; color:var(--text-mid); cursor:pointer; font-size:13px; font-family:inherit; letter-spacing:1px;}
+.alert-tab:first-child{border-radius:4px 0 0 4px;}
+.alert-tab:last-child{border-radius:0 4px 4px 0;}
+.alert-tab.active{background:var(--wood-mid); color:#FFFEF9; border-color:var(--wood-mid);}
+.alert-count{font-weight:bold; margin-left:4px;}
+
+/* Search with dropdown */
+.search-wrap{position:relative; flex:1; max-width:360px;}
+.search-box{display:flex; border:1px solid #C9B99A; border-radius:var(--radius); overflow:hidden; background:#FFFEF9;}
+.search-box:focus-within{border-color:var(--wood-mid); box-shadow:0 0 0 3px rgba(122,76,50,.1);}
+.search-box input{flex:1; padding:7px 12px; border:none; outline:none; font-size:13px; background:transparent; color:var(--text-dark); font-family:inherit;}
+.search-box input::placeholder{color:#BCAAA4;}
+.search-box button{padding:7px 16px; background:var(--wood-mid); color:#FFFEF9; border:none; cursor:pointer; font-size:13px; font-family:inherit; letter-spacing:1px;}
+.search-box button:hover{background:var(--wood-dark);}
+.autocomplete-dropdown{display:none; position:absolute; top:100%; left:0; right:0; background:#FFFEF9; border:1px solid #C9B99A; border-top:none; border-radius:0 0 4px 4px; box-shadow:0 6px 20px rgba(62,39,35,.15); z-index:100; max-height:180px; overflow-y:auto;}
+.autocomplete-dropdown.show{display:block;}
+.autocomplete-item{padding:8px 12px; cursor:pointer; font-size:13px; color:var(--text-mid); transition:background .15s; border-bottom:1px solid #F0EBE3;}
+.autocomplete-item:last-child{border-bottom:none;}
+.autocomplete-item:hover,.autocomplete-item.active{background:#F5F0E8; color:var(--text-dark);}
+.autocomplete-item .highlight{color:var(--wood-dark); font-weight:bold;}
+
+/* Toast */
+.toast{position:fixed; top:20px; right:20px; padding:12px 22px; border-radius:6px; color:#fff; font-size:14px; letter-spacing:1px; z-index:200; opacity:0; transform:translateY(-10px); transition:all .3s; font-family:"Microsoft YaHei",sans-serif;}
+.toast.show{opacity:1; transform:translateY(0);}
+.toast-success{background:#5D8A5C;}
+.toast-error{background:#D4645C;}
+.toast-info{background:#7A4C32;}
+
+/* Modal overlay */
+.modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:150; justify-content:center; align-items:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#FFFEF9; border-radius:8px; padding:24px; min-width:500px; max-width:700px; max-height:80vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.3); border:2px solid var(--wood-light);}
+.modal h3{font-family:"KaiTi","SimSun",serif; color:var(--wood-dark); letter-spacing:2px; margin-bottom:16px;}
+.modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
+
+/* Empty state */
+.empty-state{text-align:center; padding:40px; color:var(--text-light);}
+.empty-state .empty-icon{font-size:40px; margin-bottom:10px; opacity:.4;}
+
+/* inline flex helper */
+.flex-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+.flex-between{display:flex; justify-content:space-between; align-items:center;}
+.flex-1{flex:1;}
+.ml-auto{margin-left:auto;}
+.mt-2{margin-top:8px;}
+.mb-2{margin-bottom:8px;}
+
+.detail-table{width:100%; font-size:12px; margin-top:8px;}
+.detail-table th{background:#F5F0E8; color:var(--text-dark); padding:7px 10px; text-align:left; font-weight:normal; letter-spacing:1px; border-bottom:2px solid var(--border);}
+.detail-table td{padding:7px 10px; border-bottom:1px solid rgba(188,170,164,.15); color:var(--text-mid);}
+
+.toolbar{padding:0 0 10px; display:flex; gap:8px; flex-wrap:wrap;}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <span class="icon">🌿</span>
+    <h2>中药诊疗管理系统</h2>
+  </div>
+  <ul class="nav-list">
+    <li class="nav-item active" data-page="presc">
+      <span class="nav-dot"></span>患者登记与开方
+    </li>
+    <li class="nav-item" data-page="patients">
+      <span class="nav-dot"></span>患者信息管理
+    </li>
+    <li class="nav-item" data-page="stockin">
+      <span class="nav-dot"></span>药材入库
+    </li>
+    <li class="nav-item" data-page="stockinlog">
+      <span class="nav-dot"></span>入库记录
+    </li>
+    <li class="nav-item" data-page="herbs">
+      <span class="nav-dot"></span>中药药材管理
+    </li>
+    <li class="nav-item" data-page="formulas">
+      <span class="nav-dot"></span>方子管理
+    </li>
+    <li class="nav-item" data-page="alerts">
+      <span class="nav-dot"></span>预警面板
+      <span class="nav-badge" id="alertBadge">5</span>
+    </li>
+    <li class="nav-item" data-page="backup">
+      <span class="nav-dot"></span>数据备份恢复
+    </li>
+  </ul>
+  <div class="sidebar-footer">v1.0 · 单机版</div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <!-- Page 1: 患者登记与开方 -->
+  <div class="page active" id="page-presc">
+    <div class="topbar">
+      <span class="page-title">患者登记与开方</span>
+      <span class="page-subtitle">新建处方 · 选药计价 · 自动扣库</span>
+    </div>
+    <div class="content">
+      <!-- Patient info -->
+      <div class="card">
+        <div class="card-title">患者信息</div>
+        <div class="presc-form-row">
+          <div class="form-group"><label>姓名 *</label><input type="text" id="pName" placeholder="患者姓名"></div>
+          <div class="form-group"><label>联系电话</label><input type="text" id="pPhone" placeholder="手机号"></div>
+          <div class="form-group"><label>年龄</label><input type="number" id="pAge" placeholder="年龄" min="1" max="150"></div>
+        </div>
+        <div class="presc-form-row mt-2">
+          <div class="form-group"><label>性别</label><select id="pGender"><option value="">请选择</option><option>男</option><option>女</option></select></div>
+          <div class="form-group"><label>居住地址</label><input type="text" id="pAddress" placeholder="地址"></div>
+          <div class="form-group"><label>病因病情 *</label><input type="text" id="pCondition" placeholder="主诉与诊断"></div>
+        </div>
+      </div>
+
+      <!-- Prescription builder -->
+      <div class="card">
+        <div class="card-title">开方明细</div>
+        <div class="presc-preview" id="prescPreview">
+          <div class="presc-preview-empty">尚未添加药材</div>
+        </div>
+        <div class="flex-row mb-2">
+          <span style="font-size:13px;color:var(--text-light);white-space:nowrap;">快速选方剂：</span>
+          <select id="formulaSelect" style="padding:7px 12px;border:1px solid #C9B99A;border-radius:4px;font-size:13px;font-family:inherit;background:#FFFEF9;min-width:200px;">
+            <option value="">-- 手动选药 --</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="applyFormula()">套用方剂</button>
+          <span style="color:var(--border);margin:0 8px;">|</span>
+          <span style="font-size:13px;color:var(--text-light);white-space:nowrap;">手动添加：</span>
+          <div class="search-wrap" style="max-width:200px;">
+            <div class="search-box">
+              <input type="text" id="herbSearch" placeholder="搜药材…" autocomplete="off">
+              <button onclick="addHerbToPresc()">+</button>
+            </div>
+            <div class="autocomplete-dropdown" id="herbAutocomplete"></div>
+          </div>
+          <input type="number" id="herbGrams" placeholder="克数" min="1" step="0.1" style="width:80px;padding:7px 10px;border:1px solid #C9B99A;border-radius:4px;font-size:13px;font-family:inherit;background:#FFFEF9;">
+        </div>
+        <div class="table-wrap" style="max-height:200px;">
+          <table>
+            <thead><tr><th>药材</th><th>克数 (g)</th><th>库存余量</th><th>操作</th></tr></thead>
+            <tbody id="prescItemsBody">
+              <tr><td colspan="4" class="empty-state"><span class="empty-icon">📋</span><br>请选择方剂模板或手动添加药材</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="presc-total">处方合计：<span id="prescTotal">¥0.00</span></div>
+        <div class="presc-actions">
+          <span class="presc-no">编号：<strong id="prescNo">CF-20260517-001</strong></span>
+          <div style="flex:1;"></div>
+          <button class="btn btn-outline btn-sm" onclick="resetPresc()">重置</button>
+          <button class="btn btn-primary" onclick="savePrescription()">保存开方</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 2: 患者信息管理 -->
+  <div class="page" id="page-patients">
+    <div class="topbar">
+      <span class="page-title">患者信息管理</span>
+      <div class="search-wrap">
+        <div class="search-box">
+          <input type="text" id="patientSearch" placeholder="搜姓名、电话、地址…" autocomplete="off">
+          <button onclick="searchPatients()">搜索</button>
+        </div>
+        <div class="autocomplete-dropdown" id="patientAutocomplete"></div>
+      </div>
+      <span class="page-subtitle ml-auto" id="patientCount">共 0 条</span>
+    </div>
+    <div class="content">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openPatientModal()">＋ 新增患者</button>
+        <button class="btn btn-outline btn-sm">📥 导入 Excel</button>
+        <button class="btn btn-outline btn-sm">📋 模板下载</button>
+        <button class="btn btn-outline btn-sm">📤 导出 Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:50px;">序号</th><th>姓名</th><th>电话</th><th>年龄</th><th>性别</th><th>地址</th><th>病因病情</th><th>登记日期</th><th>操作</th></tr></thead>
+          <tbody id="patientTbody"></tbody>
+        </table>
+      </div>
+      <div class="paginator" id="patientPaginator"></div>
+    </div>
+  </div>
+
+  <!-- Page 3: 药材入库 -->
+  <div class="page" id="page-stockin">
+    <div class="topbar">
+      <span class="page-title">药材入库</span>
+      <span class="page-subtitle">查询药材 → 选择药商 → 入库登记 → 验收更新库存</span>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="card-title">查找药材</div>
+        <div class="flex-row mb-2">
+          <div class="search-wrap" style="max-width:300px;">
+            <div class="search-box">
+              <input type="text" id="stockinSearch" placeholder="输入药材名称查找所有药商…" autocomplete="off">
+              <button onclick="searchStockInHerb()">查找</button>
+            </div>
+            <div class="autocomplete-dropdown" id="stockinAutocomplete"></div>
+          </div>
+          <span style="font-size:12px;color:var(--text-light);">同名药材可能存在多个药商，请选择后入库</span>
+        </div>
+        <div class="table-wrap" style="max-height:220px;" id="stockinHerbListWrap">
+          <table>
+            <thead><tr><th style="width:50px;">序号</th><th>药材</th><th>别名</th><th>药商</th><th>库存</th><th>进价</th><th>进货日期</th><th>过期时间</th><th style="width:80px;">操作</th></tr></thead>
+            <tbody id="stockinHerbList"><tr><td colspan="9" class="empty-state">请先搜索药材名称</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="stockinFormCard" style="display:none;">
+        <div class="card-title">入库登记 — <span id="stockinHerbInfo" style="color:var(--wood-mid);"></span></div>
+        <div class="presc-form-row">
+          <div class="form-group"><label>入库数量 *</label><input type="number" id="siQty" placeholder="克数(g)" min="0.1" step="0.1"></div>
+          <div class="form-group"><label>进价 (元/g)</label><input type="number" id="siPrice" placeholder="进货单价" min="0" step="0.01"></div>
+          <div class="form-group"><label>进货日期</label><input type="date" id="siDate"></div>
+        </div>
+        <div class="presc-form-row mt-2">
+          <div class="form-group"><label>保存时长 (天)</label><input type="number" id="siShelfLife" placeholder="天" min="1"></div>
+          <div class="form-group"><label>验收员 *</label><input type="text" id="siApprover" placeholder="验收人姓名"></div>
+          <div class="form-group" style="justify-content:flex-end;">
+            <label>&nbsp;</label>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="cancelStockIn()">取消</button>
+              <button class="btn btn-primary" onclick="submitStockIn()">提交入库</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">待验收入库单</div>
+        <div class="table-wrap" style="max-height:200px;">
+          <table>
+            <thead><tr><th style="width:50px;">序号</th><th>药材</th><th>药商</th><th>数量</th><th>进价</th><th>进货日期</th><th>保存时长</th><th>验收员</th><th>验收状态</th><th>提交时间</th><th>操作</th></tr></thead>
+            <tbody id="stockinPendingTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 4: 入库记录 -->
+  <div class="page" id="page-stockinlog">
+    <div class="topbar">
+      <span class="page-title">入库记录</span>
+      <span class="page-subtitle">全部药材入库历史明细</span>
+      <span class="page-subtitle ml-auto" id="stockinlogCount">共 0 条</span>
+    </div>
+    <div class="content">
+      <div class="toolbar">
+        <button class="btn btn-outline btn-sm">📤 导出 Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:50px;">序号</th><th>药材</th><th>药商</th><th>入库数量</th><th>进价</th><th>进货日期</th><th>保存时长</th><th>过期时间</th><th>验收员</th><th>验收状态</th><th>提交时间</th></tr></thead>
+          <tbody id="stockinlogTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 5: 中药药材管理 -->
+  <div class="page" id="page-herbs">
+    <div class="topbar">
+      <span class="page-title">中药药材管理</span>
+      <div class="search-wrap">
+        <div class="search-box">
+          <input type="text" id="herbSearch2" placeholder="搜药名、别名、药商…" autocomplete="off">
+          <button onclick="searchHerbs()">搜索</button>
+        </div>
+        <div class="autocomplete-dropdown" id="herbAutocomplete2"></div>
+      </div>
+      <span class="page-subtitle ml-auto" id="herbCount">共 0 条</span>
+    </div>
+    <div class="content">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm">＋ 新增药材</button>
+        <button class="btn btn-outline btn-sm">✎ 编辑</button>
+        <button class="btn btn-danger btn-sm">✕ 删除</button>
+        <span style="border-left:1px solid var(--border);margin:3px 6px;"></span>
+        <button class="btn btn-outline btn-sm">📥 导入 Excel</button>
+        <button class="btn btn-outline btn-sm">📋 模板下载</button>
+        <button class="btn btn-outline btn-sm">📤 导出 Excel</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:50px;">序号</th><th>名称</th><th>别名</th><th>药商</th><th>进价</th><th>售价</th><th>进货日期</th><th>保存时长</th><th>过期时间</th><th>库存</th><th>预警阈值</th><th>预警天数</th><th>状态</th></tr></thead>
+          <tbody id="herbTbody"></tbody>
+        </table>
+      </div>
+      <div class="paginator" id="herbPaginator"></div>
+    </div>
+  </div>
+
+  <!-- Page 6: 方子管理 -->
+  <div class="page" id="page-formulas">
+    <div class="topbar">
+      <span class="page-title">方子管理</span>
+      <span class="page-subtitle">经典方剂模板与处方记录</span>
+      <span class="page-subtitle ml-auto" id="formulaCount">共 0 条</span>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="card-title">经典方剂模板</div>
+        <div class="toolbar">
+          <button class="btn btn-primary btn-sm">＋ 新增方剂</button>
+          <button class="btn btn-outline btn-sm">📤 导出 Excel</button>
+        </div>
+        <div class="table-wrap" style="max-height:220px;">
+          <table>
+            <thead><tr><th style="width:50px;">序号</th><th>方剂名称</th><th>说明</th><th>分类</th><th>包含药材</th><th>默认总价</th><th>操作</th></tr></thead>
+            <tbody id="formulaTbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">处方记录</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:50px;">序号</th><th>处方编号</th><th>患者</th><th>方剂</th><th>诊断</th><th>总价</th><th>开方时间</th><th>操作</th></tr></thead>
+            <tbody id="prescriptionTbody"></tbody>
+          </table>
+        </div>
+        <div class="paginator" id="prescriptionPaginator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 7: 预警面板 -->
+  <div class="page" id="page-alerts">
+    <div class="topbar">
+      <span class="page-title">预警面板</span>
+      <span class="page-subtitle">库存不足 · 临期 · 已过期</span>
+    </div>
+    <div class="content">
+      <div class="alert-tabs">
+        <button class="alert-tab active" data-alert="stock">库存不足 <span class="alert-count" id="stockCount">0</span></button>
+        <button class="alert-tab" data-alert="expiry">即将过期 <span class="alert-count" id="expiryCount">0</span></button>
+        <button class="alert-tab" data-alert="expired">已过期 <span class="alert-count" id="expiredCount">0</span></button>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-outline btn-sm">📤 导出预警清单</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th style="width:50px;">序号</th><th>名称</th><th>别名</th><th>药商</th><th>库存</th><th>阈值</th><th>过期时间</th><th>预警天数</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="alertTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page 8: 数据备份恢复 -->
+  <div class="page" id="page-backup">
+    <div class="topbar">
+      <span class="page-title">数据备份恢复</span>
+      <span class="page-subtitle">SQLite 数据库备份与还原</span>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="card-title">数据备份</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">将当前所有数据（药材、患者、方剂、处方）导出为备份文件。</p>
+        <div class="flex-row">
+          <button class="btn btn-primary btn-sm" onclick="doBackup()">📦 立即备份</button>
+          <span style="font-size:12px;color:var(--text-light);">备份路径：D:\中药管理系统\backup\</span>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-light);" id="backupInfo">最近备份：暂无</div>
+      </div>
+      <div class="card">
+        <div class="card-title">数据恢复</div>
+        <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">从备份文件恢复数据。恢复将覆盖当前所有数据，请谨慎操作。</p>
+        <button class="btn btn-outline btn-sm" onclick="doRestore()">📂 选择备份文件恢复</button>
+      </div>
+      <div class="card">
+        <div class="card-title">系统信息</div>
+        <table style="font-size:13px;">
+          <tr><td style="padding:6px 20px 6px 0;color:var(--text-light);">药材总数</td><td id="sysHerbs">0</td></tr>
+          <tr><td style="padding:6px 20px 6px 0;color:var(--text-light);">患者总数</td><td id="sysPatients">0</td></tr>
+          <tr><td style="padding:6px 20px 6px 0;color:var(--text-light);">方剂模板</td><td id="sysFormulas">0</td></tr>
+          <tr><td style="padding:6px 20px 6px 0;color:var(--text-light);">处方记录</td><td id="sysPrescriptions">0</td></tr>
+          <tr><td style="padding:6px 20px 6px 0;color:var(--text-light);">入库记录</td><td id="sysStockIn">0</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- Patient edit modal -->
+<div class="modal-overlay" id="patientModal">
+  <div class="modal">
+    <h3 id="patientModalTitle">新增患者</h3>
+    <div class="presc-form-row">
+      <div class="form-group"><label>姓名 *</label><input type="text" id="mPName"></div>
+      <div class="form-group"><label>电话</label><input type="text" id="mPPhone"></div>
+      <div class="form-group"><label>年龄</label><input type="number" id="mPAge" min="1" max="150"></div>
+    </div>
+    <div class="presc-form-row mt-2">
+      <div class="form-group"><label>性别</label><select id="mPGender"><option value="">请选择</option><option>男</option><option>女</option></select></div>
+      <div class="form-group"><label>地址</label><input type="text" id="mPAddress"></div>
+      <div class="form-group"><label>病因病情</label><input type="text" id="mPCondition"></div>
+    </div>
+    <input type="hidden" id="mPId">
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closePatientModal()">取消</button>
+      <button class="btn btn-primary" onclick="savePatient()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Prescription detail modal -->
+<div class="modal-overlay" id="prescDetailModal">
+  <div class="modal">
+    <h3>处方详情</h3>
+    <div id="prescDetailContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('prescDetailModal').classList.remove('show')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA STORE ====================
+const today = '2026-05-17';
+function daysFromNow(d){return Math.round((new Date(d)-new Date(today))/86400000);}
+
+let herbs = [
+  {id:1,name:'黄芪',alias:'黄耆',supplier:'同仁堂',purchase_price:58,sell_price:0.85,purchase_date:'2026-04-15',shelf_life_days:730,expiry_date:'2028-04-14',stock_qty:25,stock_warn_threshold:5,expiry_warn_days:30},
+  {id:2,name:'当归',alias:'秦归',supplier:'同仁堂',purchase_price:120,sell_price:1.80,purchase_date:'2026-03-20',shelf_life_days:540,expiry_date:'2027-09-11',stock_qty:2.5,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:3,name:'党参',alias:'潞党参',supplier:'九州通',purchase_price:45,sell_price:0.68,purchase_date:'2026-05-01',shelf_life_days:365,expiry_date:'2027-04-30',stock_qty:18,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:4,name:'枸杞',alias:'枸杞子',supplier:'康美药业',purchase_price:35,sell_price:0.55,purchase_date:'2025-12-10',shelf_life_days:180,expiry_date:'2026-06-07',stock_qty:12,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:5,name:'陈皮',alias:'橘皮',supplier:'同仁堂',purchase_price:22,sell_price:0.38,purchase_date:'2024-11-01',shelf_life_days:365,expiry_date:'2025-10-31',stock_qty:6,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:6,name:'甘草',alias:'国老',supplier:'九州通',purchase_price:18,sell_price:0.30,purchase_date:'2026-04-20',shelf_life_days:1080,expiry_date:'2029-04-19',stock_qty:30,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:7,name:'茯苓',alias:'云苓',supplier:'康美药业',purchase_price:28,sell_price:0.45,purchase_date:'2026-02-15',shelf_life_days:730,expiry_date:'2028-02-14',stock_qty:1.8,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:8,name:'白术',alias:'于术',supplier:'同仁堂',purchase_price:42,sell_price:0.65,purchase_date:'2026-05-05',shelf_life_days:540,expiry_date:'2027-11-01',stock_qty:15,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:9,name:'白芍',alias:'芍药',supplier:'九州通',purchase_price:38,sell_price:0.58,purchase_date:'2026-01-10',shelf_life_days:180,expiry_date:'2026-07-08',stock_qty:10,stock_warn_threshold:5,expiry_warn_days:45},
+  {id:10,name:'桂枝',alias:'桂心',supplier:'同仁堂',purchase_price:15,sell_price:0.25,purchase_date:'2024-08-20',shelf_life_days:365,expiry_date:'2025-08-20',stock_qty:8,stock_warn_threshold:5,expiry_warn_days:30},
+  {id:11,name:'黄连',alias:'川连',supplier:'康美药业',purchase_price:95,sell_price:1.40,purchase_date:'2026-04-01',shelf_life_days:540,expiry_date:'2027-09-26',stock_qty:20,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:12,name:'麻黄',alias:'龙沙',supplier:'九州通',purchase_price:20,sell_price:0.32,purchase_date:'2026-05-10',shelf_life_days:365,expiry_date:'2027-05-09',stock_qty:0.8,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:13,name:'柴胡',alias:'茈胡',supplier:'同仁堂',purchase_price:55,sell_price:0.80,purchase_date:'2026-04-10',shelf_life_days:540,expiry_date:'2027-10-04',stock_qty:14,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:14,name:'杏仁',alias:'苦杏仁',supplier:'康美药业',purchase_price:32,sell_price:0.48,purchase_date:'2026-03-25',shelf_life_days:365,expiry_date:'2027-03-24',stock_qty:9,stock_warn_threshold:3,expiry_warn_days:30},
+  {id:15,name:'大黄',alias:'川军',supplier:'九州通',purchase_price:25,sell_price:0.38,purchase_date:'2026-01-18',shelf_life_days:730,expiry_date:'2028-01-17',stock_qty:11,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:16,name:'黄芩',alias:'枯芩',supplier:'同仁堂',purchase_price:48,sell_price:0.72,purchase_date:'2026-04-25',shelf_life_days:730,expiry_date:'2028-04-24',stock_qty:16,stock_warn_threshold:5,expiry_warn_days:60},
+  {id:17,name:'黄芪',alias:'北芪',supplier:'九州通',purchase_price:52,sell_price:0.78,purchase_date:'2026-03-10',shelf_life_days:730,expiry_date:'2028-03-09',stock_qty:40,stock_warn_threshold:5,expiry_warn_days:30},
+  {id:18,name:'当归',alias:'西归',supplier:'康美药业',purchase_price:115,sell_price:1.75,purchase_date:'2026-02-28',shelf_life_days:540,expiry_date:'2027-08-22',stock_qty:15,stock_warn_threshold:5,expiry_warn_days:60},
+];
+
+let patients = [
+  {id:1,name:'张三',phone:'13800001111',age:45,gender:'男',address:'北京市朝阳区望京街道10号',condition:'风寒感冒，头痛发热',created_at:'2026-05-01'},
+  {id:2,name:'李四',phone:'13900002222',age:32,gender:'女',address:'上海市浦东新区陆家嘴',condition:'脾胃虚弱，食欲不振',created_at:'2026-05-05'},
+  {id:3,name:'王五',phone:'13700003333',age:58,gender:'男',address:'广州市天河区体育西路',condition:'腰膝酸软，失眠多梦',created_at:'2026-05-10'},
+  {id:4,name:'赵六',phone:'13600004444',age:27,gender:'女',address:'成都市武侯区天府大道',condition:'经期不调，痛经',created_at:'2026-05-12'},
+  {id:5,name:'孙七',phone:'13500005555',age:63,gender:'男',address:'武汉市洪山区珞喻路',condition:'慢性支气管炎，咳嗽痰多',created_at:'2026-05-15'},
+];
+
+let formulas = [
+  {id:1,name:'麻黄汤',description:'发汗解表，宣肺平喘',category:'解表剂',items:[{herb_id:12,name:'麻黄',grams:9},{herb_id:10,name:'桂枝',grams:6},{herb_id:6,name:'甘草',grams:3},{herb_id:14,name:'杏仁',grams:9}]},
+  {id:2,name:'桂枝汤',description:'解肌发表，调和营卫',category:'解表剂',items:[{herb_id:10,name:'桂枝',grams:9},{herb_id:9,name:'白芍',grams:9},{herb_id:6,name:'甘草',grams:6},{herb_id:14,name:'杏仁',grams:9}]},
+  {id:3,name:'小柴胡汤',description:'和解少阳',category:'和解剂',items:[{herb_id:13,name:'柴胡',grams:12},{herb_id:11,name:'黄连',grams:6},{herb_id:3,name:'党参',grams:9},{herb_id:6,name:'甘草',grams:6}]},
+  {id:4,name:'四物汤',description:'补血调血',category:'补益剂',items:[{herb_id:2,name:'当归',grams:9},{herb_id:9,name:'白芍',grams:9},{herb_id:1,name:'黄芪',grams:12},{herb_id:3,name:'党参',grams:9}]},
+  {id:5,name:'四君子汤',description:'益气健脾',category:'补益剂',items:[{herb_id:3,name:'党参',grams:12},{herb_id:8,name:'白术',grams:9},{herb_id:7,name:'茯苓',grams:9},{herb_id:6,name:'甘草',grams:6}]},
+  {id:6,name:'六味地黄丸',description:'滋阴补肾',category:'补益剂',items:[{herb_id:4,name:'枸杞',grams:9},{herb_id:7,name:'茯苓',grams:9},{herb_id:9,name:'白芍',grams:6},{herb_id:13,name:'柴胡',grams:6}]},
+  {id:7,name:'逍遥散',description:'疏肝解郁，养血健脾',category:'和解剂',items:[{herb_id:13,name:'柴胡',grams:9},{herb_id:2,name:'当归',grams:9},{herb_id:9,name:'白芍',grams:9},{herb_id:8,name:'白术',grams:9}]},
+  {id:8,name:'补中益气汤',description:'补中益气，升阳举陷',category:'补益剂',items:[{herb_id:1,name:'黄芪',grams:15},{herb_id:3,name:'党参',grams:9},{herb_id:8,name:'白术',grams:9},{herb_id:6,name:'甘草',grams:6}]},
+  {id:9,name:'十全大补汤加味',description:'气血双补，扶正固本，十六味大方',category:'补益剂',items:[
+    {herb_id:1,name:'黄芪',grams:15},{herb_id:2,name:'当归',grams:9},{herb_id:3,name:'党参',grams:12},{herb_id:4,name:'枸杞',grams:9},
+    {herb_id:5,name:'陈皮',grams:6},{herb_id:6,name:'甘草',grams:6},{herb_id:7,name:'茯苓',grams:9},{herb_id:8,name:'白术',grams:9},
+    {herb_id:9,name:'白芍',grams:9},{herb_id:10,name:'桂枝',grams:6},{herb_id:11,name:'黄连',grams:3},{herb_id:12,name:'麻黄',grams:6},
+    {herb_id:13,name:'柴胡',grams:6},{herb_id:14,name:'杏仁',grams:9},{herb_id:15,name:'大黄',grams:3},{herb_id:16,name:'黄芩',grams:9}
+  ]},
+];
+
+let prescriptions = [
+  {id:1,prescription_no:'CF-20260517-001',patient_id:1,patient_name:'张三',formula_name:'麻黄汤',diagnosis:'风寒感冒',items:[{herb_id:12,name:'麻黄',grams:9,unit_price:0.32},{herb_id:10,name:'桂枝',grams:6,unit_price:0.25},{herb_id:6,name:'甘草',grams:3,unit_price:0.30},{herb_id:14,name:'杏仁',grams:9,unit_price:0.48}],total_price:9.60,created_at:'2026-05-17 10:30'},
+  {id:2,prescription_no:'CF-20260517-002',patient_id:2,patient_name:'李四',formula_name:'四君子汤',diagnosis:'脾胃虚弱',items:[{herb_id:3,name:'党参',grams:12,unit_price:0.68},{herb_id:8,name:'白术',grams:9,unit_price:0.65},{herb_id:7,name:'茯苓',grams:9,unit_price:0.45},{herb_id:6,name:'甘草',grams:6,unit_price:0.30}],total_price:19.89,created_at:'2026-05-17 14:00'},
+];
+
+let nextId = {herb:19,patient:6,formula:10,prescription:3};
+let prescriptionCounter = 2;
+
+let stockInRecords = [
+  {id:1,herb_id:1,herb_name:'黄芪',supplier:'同仁堂',qty:10,purchase_price:55,purchase_date:'2026-05-10',shelf_life_days:730,expiry_date:'2028-05-09',approver:'张医师',status:'approved',created_at:'2026-05-17 09:00'},
+  {id:2,herb_id:7,herb_name:'茯苓',supplier:'康美药业',qty:5,purchase_price:26,purchase_date:'2026-05-15',shelf_life_days:730,expiry_date:'2028-05-14',approver:'张医师',status:'pending',created_at:'2026-05-17 11:00'},
+];
+let nextStockInId = 3;
+let selectedStockInHerb = null;
+
+// ==================== NAVIGATION ====================
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelector('.nav-item.active').classList.remove('active');
+    item.classList.add('active');
+    const pageId = 'page-' + item.dataset.page;
+    document.querySelectorAll('.page.active').forEach(p => p.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    renderPage(item.dataset.page);
+  });
+});
+
+function renderPage(name){
+  switch(name){
+    case 'presc': renderPrescPage(); break;
+    case 'patients': renderPatientPage(); break;
+    case 'stockin': renderStockInPage(); break;
+    case 'stockinlog': renderStockInLogPage(); break;
+    case 'herbs': renderHerbPage(); break;
+    case 'formulas': renderFormulaPage(); break;
+    case 'alerts': renderAlertPage(); break;
+    case 'backup': renderBackupPage(); break;
+  }
+}
+
+// ==================== PAGE 1: 患者登记与开方 ====================
+let prescItems = []; // {herb_id, name, grams, unit_price}
+
+function renderPrescPage(){
+  // Populate formula dropdown
+  const sel = document.getElementById('formulaSelect');
+  sel.innerHTML = '<option value="">-- 手动选药 --</option>' +
+    formulas.map(f => `<option value="${f.id}">${f.name} — ${f.description}</option>`).join('');
+  // Generate prescription no
+  const now = new Date();
+  const ds = now.toISOString().slice(0,10).replace(/-/g,'');
+  document.getElementById('prescNo').textContent = `CF-${ds}-${String(prescriptionCounter+1).padStart(3,'0')}`;
+  updatePrescTable();
+  // Herb autocomplete
+  initHerbAutocomplete('herbSearch','herbAutocomplete', (herb) => {
+    document.getElementById('herbSearch').value = herb.name;
+  });
+}
+
+function applyFormula(){
+  const fid = parseInt(document.getElementById('formulaSelect').value);
+  if(!fid) return;
+  const f = formulas.find(x=>x.id===fid);
+  if(!f) return;
+  prescItems = f.items.map(it => {
+    const herb = herbs.find(h=>h.id===it.herb_id);
+    return {herb_id:it.herb_id, name:it.name, grams:it.grams, unit_price:herb?herb.sell_price:0};
+  });
+  updatePrescTable();
+  showToast('已套用方剂：'+f.name,'info');
+}
+
+function addHerbToPresc(){
+  const name = document.getElementById('herbSearch').value.trim();
+  const grams = parseFloat(document.getElementById('herbGrams').value);
+  if(!name){showToast('请先搜索并选择药材','error');return;}
+  if(!grams||grams<=0){showToast('请输入有效克数','error');return;}
+  const herb = herbs.find(h=>h.name===name);
+  if(!herb){showToast('未找到该药材','error');return;}
+  if(herb.stock_qty <= 0){showToast('该药材已无库存','error');return;}
+  // Check if already in list
+  const existing = prescItems.find(it=>it.herb_id===herb.id);
+  if(existing){existing.grams+=grams;}
+  else{prescItems.push({herb_id:herb.id,name:herb.name,grams,unit_price:herb.sell_price});}
+  updatePrescTable();
+  document.getElementById('herbSearch').value='';
+  document.getElementById('herbGrams').value='';
+}
+
+function removePrescItem(index){
+  prescItems.splice(index,1);
+  updatePrescTable();
+}
+
+function updatePrescTable(){
+  const tbody = document.getElementById('prescItemsBody');
+  const totalEl = document.getElementById('prescTotal');
+  const preview = document.getElementById('prescPreview');
+  if(prescItems.length===0){
+    tbody.innerHTML='<tr><td colspan="4" class="empty-state"><span class="empty-icon">📋</span><br>请选择方剂模板或手动添加药材</td></tr>';
+    totalEl.textContent='¥0.00';
+    preview.innerHTML='<div class="presc-preview-empty">尚未添加药材</div>';
+    return;
+  }
+  let total=0;
+  tbody.innerHTML = prescItems.map((it,i)=>{
+    const subtotal = it.grams * it.unit_price;
+    total += subtotal;
+    const herb = herbs.find(h=>h.id===it.herb_id);
+    const stock = herb ? herb.stock_qty : 0;
+    const stockWarn = stock < (herb?herb.stock_warn_threshold:0) ? ' style="color:#E0903C;font-weight:bold;"' : '';
+    return `<tr>
+      <td>${it.name}</td>
+      <td>${it.grams}g</td>
+      <td${stockWarn}>${stock}g</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removePrescItem(${i})">删除</button></td>
+    </tr>`;
+  }).join('');
+  // Render preview grid — no prices, just name + grams
+  preview.innerHTML = prescItems.map(it =>
+    `<div class="presc-preview-item"><span class="pname">${it.name}</span><span class="pgrams">${it.grams}g</span></div>`
+  ).join('');
+  totalEl.innerHTML = `¥${total.toFixed(2)} <span style="font-size:13px;color:var(--text-light);">（${prescItems.length} 味药）</span>`;
+}
+
+function savePrescription(){
+  const name = document.getElementById('pName').value.trim();
+  const condition = document.getElementById('pCondition').value.trim();
+  if(!name){showToast('请输入患者姓名','error');return;}
+  if(!condition){showToast('请输入病因病情','error');return;}
+  if(prescItems.length===0){showToast('请添加至少一味药材','error');return;}
+
+  // Check stock
+  for(const it of prescItems){
+    const herb = herbs.find(h=>h.id===it.herb_id);
+    if(!herb || herb.stock_qty < it.grams){
+      showToast(`药材"${it.name}"库存不足（当前 ${herb?herb.stock_qty:0}g，需要 ${it.grams}g）`,'error');
+      return;
+    }
+  }
+
+  // Check patient exists or create
+  const phone = document.getElementById('pPhone').value.trim();
+  const age = parseInt(document.getElementById('pAge').value)||0;
+  const gender = document.getElementById('pGender').value;
+  const address = document.getElementById('pAddress').value.trim();
+
+  let patient = patients.find(p=>p.name===name && p.phone===phone);
+  if(!patient){
+    patient = {id:nextId.patient++, name, phone, age, gender, address, condition, created_at:today};
+    patients.unshift(patient);
+  }
+
+  // Deduct stock
+  for(const it of prescItems){
+    const herb = herbs.find(h=>h.id===it.herb_id);
+    herb.stock_qty = Math.max(0, herb.stock_qty - it.grams);
+  }
+
+  // Calculate total
+  let total = 0;
+  const items = prescItems.map(it=>{
+    const subtotal = it.grams*it.unit_price;
+    total += subtotal;
+    return {...it, subtotal};
+  });
+
+  // Create prescription
+  prescriptionCounter++;
+  const ds = today.replace(/-/g,'');
+  const prescNo = `CF-${ds}-${String(prescriptionCounter).padStart(3,'0')}`;
+  const now = new Date();
+  const timeStr = today + ' ' + String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+  prescriptions.unshift({
+    id: nextId.prescription++,
+    prescription_no: prescNo,
+    patient_id: patient.id,
+    patient_name: patient.name,
+    formula_name: document.getElementById('formulaSelect').selectedOptions[0]?.text || '自定义',
+    diagnosis: condition,
+    items: prescItems.map(it=>({...it})),
+    total_price: total,
+    created_at: timeStr
+  });
+
+  // Reset
+  prescItems = [];
+  document.getElementById('pName').value='';
+  document.getElementById('pPhone').value='';
+  document.getElementById('pAge').value='';
+  document.getElementById('pGender').value='';
+  document.getElementById('pAddress').value='';
+  document.getElementById('pCondition').value='';
+  document.getElementById('formulaSelect').value='';
+  document.getElementById('prescNo').textContent = `CF-${ds}-${String(prescriptionCounter+1).padStart(3,'0')}`;
+  updatePrescTable();
+  updateAlertBadge();
+  showToast(`开方成功！${prescNo}，合计 ¥${total.toFixed(2)}，已自动扣减库存`,'success');
+}
+
+function resetPresc(){
+  prescItems=[];
+  document.getElementById('pName').value='';
+  document.getElementById('pPhone').value='';
+  document.getElementById('pAge').value='';
+  document.getElementById('pGender').value='';
+  document.getElementById('pAddress').value='';
+  document.getElementById('pCondition').value='';
+  document.getElementById('formulaSelect').value='';
+  document.getElementById('herbSearch').value='';
+  document.getElementById('herbGrams').value='';
+  updatePrescTable();
+}
+
+// ==================== PAGE 2: 患者信息管理 ====================
+let patientPage=1;
+const PATIENT_PAGE_SIZE=8;
+
+function renderPatientPage(){
+  const searchVal = (document.getElementById('patientSearch')?.value||'').trim().toLowerCase();
+  let list = [...patients].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  if(searchVal){
+    list = list.filter(p=>p.name.toLowerCase().includes(searchVal)||p.phone.includes(searchVal)||p.address.toLowerCase().includes(searchVal));
+  }
+  document.getElementById('patientCount').textContent = `共 ${list.length} 条`;
+  const totalPages = Math.ceil(list.length/PATIENT_PAGE_SIZE)||1;
+  if(patientPage>totalPages) patientPage=totalPages;
+  const start = (patientPage-1)*PATIENT_PAGE_SIZE;
+  const pageItems = list.slice(start, start+PATIENT_PAGE_SIZE);
+
+  const tbody = document.getElementById('patientTbody');
+  tbody.innerHTML = pageItems.map((p,i)=>`<tr>
+    <td>${start+i+1}</td><td>${p.name}</td><td>${p.phone||'-'}</td><td>${p.age||'-'}</td><td>${p.gender||'-'}</td>
+    <td>${p.address||'-'}</td><td>${p.condition||'-'}</td><td>${p.created_at}</td>
+    <td>
+      <button class="btn btn-outline btn-sm" onclick="viewPatientPrescriptions(${p.id})">历史开方</button>
+      <button class="btn btn-outline btn-sm" onclick="editPatient(${p.id})">编辑</button>
+      <button class="btn btn-danger btn-sm" onclick="deletePatient(${p.id})">删除</button>
+    </td>
+  </tr>`).join('');
+  if(pageItems.length===0) tbody.innerHTML='<tr><td colspan="9" class="empty-state">暂无患者记录</td></tr>';
+  renderPaginator('patientPaginator', patientPage, totalPages, (p)=>{patientPage=p;renderPatientPage();});
+  initPatientAutocomplete();
+}
+
+function viewPatientPrescriptions(pid){
+  const patient = patients.find(p=>p.id===pid);
+  if(!patient) return;
+  const prescs = prescriptions.filter(p=>p.patient_id===pid);
+  let html = `<p style="margin-bottom:14px;color:var(--text-mid);">患者：<strong>${patient.name}</strong> | 病情：${patient.condition||'-'} | 历史开方：${prescs.length} 次</p>`;
+  if(prescs.length===0){
+    html += '<p style="color:var(--text-light);">暂无历史处方记录</p>';
+  } else {
+    html += '<table class="detail-table"><thead><tr><th>处方编号</th><th>方剂</th><th>诊断</th><th>总价</th><th>时间</th><th>明细</th></tr></thead><tbody>';
+    prescs.forEach(p=>{
+      html += `<tr><td>${p.prescription_no}</td><td>${p.formula_name}</td><td>${p.diagnosis}</td><td>¥${p.total_price.toFixed(2)}</td><td>${p.created_at}</td><td>${p.items.map(i=>i.name+i.grams+'g').join('、')}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  document.getElementById('prescDetailContent').innerHTML = html;
+  document.getElementById('prescDetailModal').classList.add('show');
+}
+
+function editPatient(id){
+  const p = patients.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('patientModalTitle').textContent='编辑患者';
+  document.getElementById('mPId').value=p.id;
+  document.getElementById('mPName').value=p.name;
+  document.getElementById('mPPhone').value=p.phone||'';
+  document.getElementById('mPAge').value=p.age||'';
+  document.getElementById('mPGender').value=p.gender||'';
+  document.getElementById('mPAddress').value=p.address||'';
+  document.getElementById('mPCondition').value=p.condition||'';
+  document.getElementById('patientModal').classList.add('show');
+}
+
+function deletePatient(id){
+  if(!confirm('确定删除该患者记录？')) return;
+  patients = patients.filter(p=>p.id!==id);
+  renderPatientPage();
+  updateAlertBadge();
+  showToast('患者记录已删除','info');
+}
+
+function openPatientModal(){
+  document.getElementById('patientModalTitle').textContent='新增患者';
+  document.getElementById('mPId').value='';
+  document.getElementById('mPName').value='';
+  document.getElementById('mPPhone').value='';
+  document.getElementById('mPAge').value='';
+  document.getElementById('mPGender').value='';
+  document.getElementById('mPAddress').value='';
+  document.getElementById('mPCondition').value='';
+  document.getElementById('patientModal').classList.add('show');
+}
+
+function closePatientModal(){
+  document.getElementById('patientModal').classList.remove('show');
+}
+
+function savePatient(){
+  const name = document.getElementById('mPName').value.trim();
+  if(!name){showToast('请输入患者姓名','error');return;}
+  const id = document.getElementById('mPId').value;
+  const data = {
+    name,
+    phone: document.getElementById('mPPhone').value.trim(),
+    age: parseInt(document.getElementById('mPAge').value)||0,
+    gender: document.getElementById('mPGender').value,
+    address: document.getElementById('mPAddress').value.trim(),
+    condition: document.getElementById('mPCondition').value.trim(),
+    created_at: today
+  };
+  if(id){
+    const p = patients.find(x=>x.id===parseInt(id));
+    if(p) Object.assign(p, data);
+  } else {
+    data.id = nextId.patient++;
+    patients.unshift(data);
+    // Also auto-fill prescription page if patient was created from there
+    document.getElementById('pName').value = data.name;
+    document.getElementById('pPhone').value = data.phone||'';
+    document.getElementById('pAge').value = data.age||'';
+    document.getElementById('pGender').value = data.gender||'';
+    document.getElementById('pAddress').value = data.address||'';
+    document.getElementById('pCondition').value = data.condition||'';
+  }
+  closePatientModal();
+  renderPatientPage();
+  showToast(id?'患者信息已更新':'患者已新增','success');
+}
+
+function initPatientAutocomplete(){
+  const input = document.getElementById('patientSearch');
+  const dropdown = document.getElementById('patientAutocomplete');
+  if(!input||!dropdown) return;
+  input.addEventListener('input', ()=>{
+    const val = input.value.trim().toLowerCase();
+    if(!val){dropdown.classList.remove('show');return;}
+    const matches = patients.filter(p=>p.name.toLowerCase().includes(val)||p.phone.includes(val)).slice(0,6);
+    if(matches.length===0){dropdown.classList.remove('show');return;}
+    dropdown.innerHTML = matches.map(p=>`<div class="autocomplete-item" data-name="${p.name}">${p.name} — ${p.phone||'无电话'}</div>`).join('');
+    dropdown.classList.add('show');
+  });
+  dropdown.addEventListener('click', (e)=>{
+    const item = e.target.closest('.autocomplete-item');
+    if(!item) return;
+    input.value = item.dataset.name;
+    dropdown.classList.remove('show');
+    searchPatients();
+  });
+}
+
+function searchPatients(){
+  renderPatientPage();
+}
+
+// ==================== PAGE 5: 中药药材管理 ====================
+let herbPage=1;
+const HERB_PAGE_SIZE=10;
+
+function renderHerbPage(){
+  const searchVal = (document.getElementById('herbSearch2')?.value||'').trim().toLowerCase();
+  let list = [...herbs].sort((a,b)=>a.name.localeCompare(b.name,'zh-CN')||a.supplier.localeCompare(b.supplier,'zh-CN'));
+  if(searchVal){
+    list = list.filter(h=>h.name.toLowerCase().includes(searchVal)||h.alias.toLowerCase().includes(searchVal)||h.supplier.toLowerCase().includes(searchVal));
+  }
+  document.getElementById('herbCount').textContent = `共 ${list.length} 条`;
+  const totalPages = Math.ceil(list.length/HERB_PAGE_SIZE)||1;
+  if(herbPage>totalPages) herbPage=totalPages;
+  const start = (herbPage-1)*HERB_PAGE_SIZE;
+  const pageItems = list.slice(start, start+HERB_PAGE_SIZE);
+
+  const tbody = document.getElementById('herbTbody');
+  tbody.innerHTML = pageItems.map((h,i)=>{
+    const rowClass = getHerbWarnClass(h);
+    const status = getHerbStatus(h);
+    return `<tr class="${rowClass}">
+      <td>${start+i+1}</td><td>${h.name}</td><td>${h.alias}</td><td>${h.supplier}</td>
+      <td>¥${h.purchase_price.toFixed(2)}</td><td>¥${h.sell_price.toFixed(2)}/g</td>
+      <td>${h.purchase_date}</td><td>${h.shelf_life_days}天</td><td>${h.expiry_date}</td>
+      <td>${h.stock_qty}g</td><td>${h.stock_warn_threshold}g</td><td>${h.expiry_warn_days}天</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+  renderPaginator('herbPaginator', herbPage, totalPages, (p)=>{herbPage=p;renderHerbPage();});
+  initHerbAutocompletePage();
+}
+
+function getHerbWarnClass(h){
+  const daysLeft = daysFromNow(h.expiry_date);
+  if(daysLeft<0) return 'warn-expired';
+  if(h.stock_qty < h.stock_warn_threshold) return 'warn-stock';
+  if(daysLeft < h.expiry_warn_days) return 'warn-expiry';
+  return '';
+}
+
+function getHerbStatus(h){
+  const daysLeft = daysFromNow(h.expiry_date);
+  if(daysLeft<0) return '<span class="tag tag-expired">已过期</span>';
+  if(h.stock_qty < h.stock_warn_threshold) return '<span class="tag tag-stock">库存不足</span>';
+  if(daysLeft < h.expiry_warn_days) return '<span class="tag tag-expiry">临期</span>';
+  return '<span class="tag tag-ok">正常</span>';
+}
+
+function searchHerbs(){renderHerbPage();}
+
+function initHerbAutocompletePage(){
+  const input = document.getElementById('herbSearch2');
+  const dropdown = document.getElementById('herbAutocomplete2');
+  if(!input||!dropdown) return;
+  input.addEventListener('input', ()=>{
+    const val = input.value.trim();
+    if(!val){dropdown.classList.remove('show');return;}
+    const matches = herbs.filter(h=>h.name.includes(val)||h.alias.includes(val)||h.supplier.includes(val)).slice(0,8);
+    if(matches.length===0){dropdown.classList.remove('show');return;}
+    dropdown.innerHTML = matches.map(h=>`<div class="autocomplete-item" data-name="${h.name}">${h.name} <small>(${h.alias})</small> — ${h.supplier}</div>`).join('');
+    dropdown.classList.add('show');
+  });
+  dropdown.addEventListener('click', (e)=>{
+    const item = e.target.closest('.autocomplete-item');
+    if(!item) return;
+    input.value = item.dataset.name;
+    dropdown.classList.remove('show');
+    renderHerbPage();
+  });
+}
+
+// ==================== PAGE 3: 药材入库 ====================
+function renderStockInPage(){
+  initStockInAutocomplete();
+  renderStockInPending();
+}
+
+function searchStockInHerb(){
+  const val = document.getElementById('stockinSearch').value.trim();
+  if(!val){showToast('请输入药材名称','error');return;}
+  const matches = herbs.filter(h=>h.name.includes(val));
+  const tbody = document.getElementById('stockinHerbList');
+  if(matches.length===0){
+    tbody.innerHTML='<tr><td colspan="9" class="empty-state">未找到匹配药材</td></tr>';
+    return;
+  }
+  tbody.innerHTML = matches.map((h,i)=>`<tr>
+    <td>${i+1}</td><td>${h.name}</td><td>${h.alias}</td><td>${h.supplier}</td>
+    <td>${h.stock_qty}g</td><td>¥${h.purchase_price.toFixed(2)}</td>
+    <td>${h.purchase_date}</td><td>${h.expiry_date}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="selectHerbForStockIn(${h.id})">入库</button></td>
+  </tr>`).join('');
+}
+
+function selectHerbForStockIn(hid){
+  const h = herbs.find(x=>x.id===hid);
+  if(!h) return;
+  selectedStockInHerb = h;
+  document.getElementById('stockinHerbInfo').textContent = `${h.name}（${h.supplier}）当前库存 ${h.stock_qty}g · 进价 ¥${h.purchase_price.toFixed(2)} · 进货日期 ${h.purchase_date}`;
+  document.getElementById('siQty').value = '';
+  document.getElementById('siPrice').value = h.purchase_price;
+  document.getElementById('siDate').value = today;
+  document.getElementById('siShelfLife').value = h.shelf_life_days;
+  document.getElementById('siApprover').value = '';
+  document.getElementById('stockinFormCard').style.display = 'block';
+  document.getElementById('stockinFormCard').scrollIntoView({behavior:'smooth'});
+}
+
+function cancelStockIn(){
+  selectedStockInHerb = null;
+  document.getElementById('stockinFormCard').style.display = 'none';
+}
+
+function submitStockIn(){
+  if(!selectedStockInHerb){showToast('请先选择药材','error');return;}
+  const qty = parseFloat(document.getElementById('siQty').value);
+  const price = parseFloat(document.getElementById('siPrice').value);
+  const date = document.getElementById('siDate').value;
+  const shelfLife = parseInt(document.getElementById('siShelfLife').value);
+  const approver = document.getElementById('siApprover').value.trim();
+  if(!qty||qty<=0){showToast('请输入有效入库数量','error');return;}
+  if(!price||price<=0){showToast('请输入有效进价','error');return;}
+  if(!date){showToast('请选择进货日期','error');return;}
+  if(!approver){showToast('请输入验收员','error');return;}
+
+  const expiry = new Date(date);
+  expiry.setDate(expiry.getDate() + (shelfLife||365));
+  const expiryStr = expiry.toISOString().slice(0,10);
+
+  stockInRecords.unshift({
+    id: nextStockInId++,
+    herb_id: selectedStockInHerb.id,
+    herb_name: selectedStockInHerb.name,
+    supplier: selectedStockInHerb.supplier,
+    qty, purchase_price: price, purchase_date: date,
+    shelf_life_days: shelfLife||365, expiry_date: expiryStr,
+    approver, status: 'pending',
+    created_at: new Date().toISOString().slice(0,16).replace('T',' ')
+  });
+
+  cancelStockIn();
+  renderStockInPending();
+  renderStockInHerbListAfterChange();
+  showToast('入库单已提交，等待验收','success');
+}
+
+function approveStockIn(sid){
+  const record = stockInRecords.find(r=>r.id===sid);
+  if(!record) return;
+  if(record.status==='approved'){showToast('该入库单已验收','error');return;}
+
+  record.status = 'approved';
+  const herb = herbs.find(h=>h.id===record.herb_id);
+  if(herb){
+    herb.stock_qty += record.qty;
+    herb.purchase_price = record.purchase_price;
+    herb.purchase_date = record.purchase_date;
+    herb.shelf_life_days = record.shelf_life_days;
+    herb.expiry_date = record.expiry_date;
+  }
+  renderStockInPending();
+  updateAlertBadge();
+  showToast(`验收通过！${record.herb_name} 库存 +${record.qty}g，已更新药材信息`,'success');
+}
+
+function rejectStockIn(sid){
+  const record = stockInRecords.find(r=>r.id===sid);
+  if(!record) return;
+  record.status = 'rejected';
+  renderStockInPending();
+  showToast('入库单已驳回','info');
+}
+
+function renderStockInPending(){
+  const list = stockInRecords.filter(r=>r.status==='pending');
+  const tbody = document.getElementById('stockinPendingTbody');
+  if(list.length===0){
+    tbody.innerHTML='<tr><td colspan="11" class="empty-state">暂无待验收入库单</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((r,i)=>`<tr>
+    <td>${i+1}</td><td>${r.herb_name}</td><td>${r.supplier}</td><td>${r.qty}g</td>
+    <td>¥${r.purchase_price.toFixed(2)}</td><td>${r.purchase_date}</td>
+    <td>${r.shelf_life_days}天</td><td>${r.approver}</td>
+    <td><span class="tag tag-expiry">待验收</span></td><td>${r.created_at}</td>
+    <td>
+      <button class="btn btn-primary btn-sm" onclick="approveStockIn(${r.id})">验收通过</button>
+      <button class="btn btn-danger btn-sm" onclick="rejectStockIn(${r.id})">驳回</button>
+    </td>
+  </tr>`).join('');
+}
+
+function renderStockInHerbListAfterChange(){
+  const val = document.getElementById('stockinSearch').value.trim();
+  if(val) searchStockInHerb();
+}
+
+function initStockInAutocomplete(){
+  const input = document.getElementById('stockinSearch');
+  const dropdown = document.getElementById('stockinAutocomplete');
+  if(!input||!dropdown) return;
+  input.addEventListener('input', ()=>{
+    const val = input.value.trim();
+    if(!val){dropdown.classList.remove('show');return;}
+    const names = [...new Set(herbs.map(h=>h.name))];
+    const matches = names.filter(n=>n.includes(val)).slice(0,8);
+    if(matches.length===0){dropdown.classList.remove('show');return;}
+    dropdown.innerHTML = matches.map(n=>{
+      const count = herbs.filter(h=>h.name===n).length;
+      return `<div class="autocomplete-item" data-name="${n}">${n} <small style="color:var(--text-light);">${count}个药商</small></div>`;
+    }).join('');
+    dropdown.classList.add('show');
+  });
+  dropdown.addEventListener('click', (e)=>{
+    const item = e.target.closest('.autocomplete-item');
+    if(!item) return;
+    input.value = item.dataset.name;
+    dropdown.classList.remove('show');
+    searchStockInHerb();
+  });
+}
+
+// ==================== PAGE 4: 入库记录 ====================
+function renderStockInLogPage(){
+  const list = [...stockInRecords].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  document.getElementById('stockinlogCount').textContent = `共 ${list.length} 条`;
+  const tbody = document.getElementById('stockinlogTbody');
+  if(list.length===0){
+    tbody.innerHTML='<tr><td colspan="11" class="empty-state">暂无入库记录</td></tr>';
+    return;
+  }
+  const statusTag = s=>s==='approved'?'<span class="tag tag-ok">已验收</span>':s==='rejected'?'<span class="tag tag-expired">已驳回</span>':'<span class="tag tag-expiry">待验收</span>';
+  tbody.innerHTML = list.map((r,i)=>`<tr>
+    <td>${i+1}</td><td>${r.herb_name}</td><td>${r.supplier}</td><td>${r.qty}g</td>
+    <td>¥${r.purchase_price.toFixed(2)}</td><td>${r.purchase_date}</td>
+    <td>${r.shelf_life_days}天</td><td>${r.expiry_date}</td><td>${r.approver}</td>
+    <td>${statusTag(r.status)}</td><td>${r.created_at}</td>
+  </tr>`).join('');
+}
+
+// ==================== PAGE 6: 方子管理 ====================
+let prescPage=1;
+const PRESC_PAGE_SIZE=8;
+
+function renderFormulaPage(){
+  // Formula templates
+  document.getElementById('formulaTbody').innerHTML = formulas.map((f,i)=>{
+    const herbNames = f.items.map(i=>i.name+i.grams+'g').join('、');
+    const total = f.items.reduce((s,i)=>{
+      const h = herbs.find(x=>x.id===i.herb_id);
+      return s + (h?h.sell_price:0)*i.grams;
+    },0);
+    return `<tr>
+      <td>${i+1}</td><td>${f.name}</td><td>${f.description}</td><td>${f.category}</td>
+      <td>${herbNames}</td><td>¥${total.toFixed(2)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="useFormula(${f.id})">去开方</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Prescriptions — sorted newest first
+  const sortedPresc = [...prescriptions].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const totalPages = Math.ceil(sortedPresc.length/PRESC_PAGE_SIZE)||1;
+  if(prescPage>totalPages) prescPage=totalPages;
+  const start = (prescPage-1)*PRESC_PAGE_SIZE;
+  const pageItems = sortedPresc.slice(start, start+PRESC_PAGE_SIZE);
+  document.getElementById('formulaCount').textContent = `方剂 ${formulas.length} · 处方 ${prescriptions.length}`;
+
+  document.getElementById('prescriptionTbody').innerHTML = pageItems.map((p,i)=>`<tr>
+    <td>${start+i+1}</td><td>${p.prescription_no}</td><td>${p.patient_name}</td><td>${p.formula_name}</td>
+    <td>${p.diagnosis}</td><td>¥${p.total_price.toFixed(2)}</td><td>${p.created_at}</td>
+    <td><button class="btn btn-outline btn-sm" onclick="viewPrescDetail(${p.id})">查看明细</button></td>
+  </tr>`).join('');
+  if(pageItems.length===0) document.getElementById('prescriptionTbody').innerHTML='<tr><td colspan="8" class="empty-state">暂无处方记录</td></tr>';
+  renderPaginator('prescriptionPaginator', prescPage, totalPages, (p)=>{prescPage=p;renderFormulaPage();});
+}
+
+function useFormula(fid){
+  const f = formulas.find(x=>x.id===fid);
+  if(!f) return;
+  prescItems = f.items.map(it=>{
+    const herb = herbs.find(h=>h.id===it.herb_id);
+    return {herb_id:it.herb_id,name:it.name,grams:it.grams,unit_price:herb?herb.sell_price:0};
+  });
+  document.getElementById('formulaSelect').value = fid;
+  updatePrescTable();
+  // Switch to presc page
+  document.querySelectorAll('.nav-item.active').forEach(n=>n.classList.remove('active'));
+  document.querySelector('[data-page="presc"]').classList.add('active');
+  document.querySelectorAll('.page.active').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-presc').classList.add('active');
+  renderPrescPage();
+  showToast('已加载方剂：'+f.name+'，请完善患者信息后保存','info');
+}
+
+function viewPrescDetail(id){
+  const p = prescriptions.find(x=>x.id===id);
+  if(!p) return;
+  let html = `<p style="margin-bottom:14px;color:var(--text-mid);">
+    处方编号：<strong>${p.prescription_no}</strong> | 患者：<strong>${p.patient_name}</strong> | 时间：${p.created_at}
+  </p>
+  <div class="presc-preview" style="margin-bottom:14px;">`;
+  p.items.forEach(i=>{
+    html += `<div class="presc-preview-item"><span class="pname">${i.name}</span><span class="pgrams">${i.grams}g</span></div>`;
+  });
+  html += `<div class="presc-preview-total">合计 <strong>¥${p.total_price.toFixed(2)}</strong>（${p.items.length} 味）</div></div>
+  <table class="detail-table"><thead><tr><th>药材</th><th>克数</th><th>单价</th><th>小计</th></tr></thead><tbody>`;
+  p.items.forEach(i=>{
+    html += `<tr><td>${i.name}</td><td>${i.grams}g</td><td>¥${i.unit_price.toFixed(2)}/g</td><td>¥${(i.grams*i.unit_price).toFixed(2)}</td></tr>`;
+  });
+  html += `<tr style="font-weight:bold;background:#F5F0E8;"><td colspan="3" style="text-align:right;">合计</td><td>¥${p.total_price.toFixed(2)}</td></tr></tbody></table>`;
+  document.getElementById('prescDetailContent').innerHTML = html;
+  document.getElementById('prescDetailModal').classList.add('show');
+}
+
+// ==================== PAGE 7: 预警面板 ====================
+let currentAlertType = 'stock';
+
+function renderAlertPage(){
+  let list;
+  switch(currentAlertType){
+    case 'stock': list = herbs.filter(h=>h.stock_qty < h.stock_warn_threshold); break;
+    case 'expiry': list = herbs.filter(h=>{const d=daysFromNow(h.expiry_date); return d>=0 && d<h.expiry_warn_days;}); break;
+    case 'expired': list = herbs.filter(h=>daysFromNow(h.expiry_date)<0); break;
+    default: list=[];
+  }
+  document.getElementById('stockCount').textContent = herbs.filter(h=>h.stock_qty<h.stock_warn_threshold).length;
+  document.getElementById('expiryCount').textContent = herbs.filter(h=>{const d=daysFromNow(h.expiry_date);return d>=0&&d<h.expiry_warn_days;}).length;
+  document.getElementById('expiredCount').textContent = herbs.filter(h=>daysFromNow(h.expiry_date)<0).length;
+
+  document.getElementById('alertTbody').innerHTML = list.map((h,i)=>{
+    const daysLeft = daysFromNow(h.expiry_date);
+    const status = daysLeft<0?'<span class="tag tag-expired">已过期</span>'
+      : h.stock_qty<h.stock_warn_threshold?'<span class="tag tag-stock">库存不足</span>'
+      : '<span class="tag tag-expiry">临期</span>';
+    return `<tr class="${getHerbWarnClass(h)}">
+      <td>${i+1}</td><td>${h.name}</td><td>${h.alias}</td><td>${h.supplier}</td>
+      <td><strong>${h.stock_qty}g</strong></td><td>${h.stock_warn_threshold}g</td>
+      <td>${h.expiry_date}</td><td>${h.expiry_warn_days}天</td>
+      <td>${status}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="jumpToHerbEdit(${h.id})">编辑药材</button></td>
+    </tr>`;
+  }).join('');
+  if(list.length===0) document.getElementById('alertTbody').innerHTML='<tr><td colspan="10" class="empty-state"><span class="empty-icon">✓</span><br>暂无此类预警</td></tr>';
+
+  // Update tabs
+  document.querySelectorAll('.alert-tab').forEach(tab=>{
+    tab.classList.toggle('active', tab.dataset.alert===currentAlertType);
+  });
+}
+
+function jumpToHerbEdit(id){
+  // Switch to herbs page
+  document.querySelectorAll('.nav-item.active').forEach(n=>n.classList.remove('active'));
+  document.querySelector('[data-page="herbs"]').classList.add('active');
+  document.querySelectorAll('.page.active').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-herbs').classList.add('active');
+  const herb = herbs.find(h=>h.id===id);
+  if(herb){document.getElementById('herbSearch2').value = herb.name;}
+  herbPage=1;
+  renderHerbPage();
+}
+
+// Alert tab clicks
+document.querySelector('.alert-tabs').addEventListener('click', (e)=>{
+  const tab = e.target.closest('.alert-tab');
+  if(!tab) return;
+  currentAlertType = tab.dataset.alert;
+  renderAlertPage();
+});
+
+// ==================== PAGE 8: 备份恢复 ====================
+function renderBackupPage(){
+  document.getElementById('sysHerbs').textContent = herbs.length;
+  document.getElementById('sysPatients').textContent = patients.length;
+  document.getElementById('sysFormulas').textContent = formulas.length;
+  document.getElementById('sysPrescriptions').textContent = prescriptions.length;
+  document.getElementById('sysStockIn').textContent = stockInRecords.length;
+}
+
+function doBackup(){
+  const data = {herbs, patients, formulas, prescriptions, stockInRecords, nextStockInId, nextId, prescriptionCounter};
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `中药管理系统_备份_${today}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('backupInfo').textContent = `最近备份：${today} (药材${herbs.length}·患者${patients.length}·处方${prescriptions.length}·入库${stockInRecords.length})`;
+  showToast('备份文件已下载','success');
+}
+
+function doRestore(){
+  const input = document.createElement('input');
+  input.type='file';
+  input.accept='.json';
+  input.onchange = (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const data = JSON.parse(ev.target.result);
+        if(!data.herbs||!data.patients){throw new Error('无效的备份文件');}
+        herbs = data.herbs;
+        patients = data.patients;
+        formulas = data.formulas;
+        prescriptions = data.prescriptions;
+        stockInRecords = data.stockInRecords || [];
+        nextStockInId = data.nextStockInId || 1;
+        nextId = data.nextId;
+        prescriptionCounter = data.prescriptionCounter;
+        renderBackupPage();
+        updateAlertBadge();
+        prescItems=[];
+        updatePrescTable();
+        showToast('数据恢复成功！','success');
+      }catch(err){
+        showToast('备份文件格式错误，恢复失败','error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ==================== UTILS ====================
+function initHerbAutocomplete(inputId, dropdownId, onSelect){
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  if(!input||!dropdown) return;
+  input.addEventListener('input', ()=>{
+    const val = input.value.trim();
+    if(!val){dropdown.classList.remove('show');return;}
+    const matches = herbs.filter(h=>h.name.includes(val)||h.alias.includes(val)).slice(0,8);
+    if(matches.length===0){dropdown.classList.remove('show');return;}
+    dropdown.innerHTML = matches.map(h=>{
+      const highlighted = h.name.replace(new RegExp(val,'g'),`<span class="highlight">${val}</span>`);
+      return `<div class="autocomplete-item" data-name="${h.name}">${highlighted} — 库存${h.stock_qty}g · ¥${h.sell_price.toFixed(2)}/g</div>`;
+    }).join('');
+    dropdown.classList.add('show');
+  });
+  dropdown.addEventListener('click', (e)=>{
+    const item = e.target.closest('.autocomplete-item');
+    if(!item) return;
+    if(onSelect){
+      const herb = herbs.find(h=>h.name===item.dataset.name);
+      onSelect(herb);
+    }
+    dropdown.classList.remove('show');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.search-wrap') && !e.target.closest(`#${inputId}`)) dropdown.classList.remove('show');
+  });
+}
+
+function renderPaginator(containerId, page, totalPages, onPage){
+  const c = document.getElementById(containerId);
+  if(!c||totalPages<=1){if(c)c.innerHTML='';return;}
+  let html = `<span>第 ${page}/${totalPages} 页</span><div class="pages">`;
+  html += `<button class="page-btn" onclick="void(0)" ${page===1?'disabled':''}>上一页</button>`;
+  for(let i=1;i<=totalPages;i++){
+    if(totalPages>7 && i>2 && i<totalPages-1 && Math.abs(i-page)>1){
+      if(i===3||i===totalPages-2) html+='<button class="ellipsis">…</button>';
+      continue;
+    }
+    html += `<button class="${i===page?'active':''}" onclick="void(0)">${i}</button>`;
+  }
+  html += `<button class="page-btn" ${page===totalPages?'disabled':''}>下一页</button></div>`;
+  c.innerHTML = html;
+  // Rebind
+  const buttons = c.querySelectorAll('button:not(.ellipsis):not([disabled])');
+  buttons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.classList.contains('page-btn')){
+        if(btn.textContent.includes('上一页')&&page>1) onPage(page-1);
+        if(btn.textContent.includes('下一页')&&page<totalPages) onPage(page+1);
+      } else {
+        const p = parseInt(btn.textContent);
+        if(p && p!==page) onPage(p);
+      }
+    });
+  });
+}
+
+function showToast(msg, type){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast toast-'+type+' show';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(()=>toast.classList.remove('show'), 2200);
+}
+
+function updateAlertBadge(){
+  const stockWarn = herbs.filter(h=>h.stock_qty<h.stock_warn_threshold).length;
+  const expiryWarn = herbs.filter(h=>{const d=daysFromNow(h.expiry_date);return d>=0&&d<h.expiry_warn_days;}).length;
+  const expired = herbs.filter(h=>daysFromNow(h.expiry_date)<0).length;
+  const total = stockWarn+expiryWarn+expired;
+  document.getElementById('alertBadge').textContent = total||'0';
+}
+
+// Close modals on overlay click
+document.getElementById('patientModal').addEventListener('click', function(e){if(e.target===this)this.classList.remove('show');});
+document.getElementById('prescDetailModal').addEventListener('click', function(e){if(e.target===this)this.classList.remove('show');});
+
+// Key shortcuts
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.autocomplete-dropdown').forEach(d=>d.classList.remove('show'));
+  }
+});
+
+// ==================== INIT ====================
+renderPrescPage();
+updateAlertBadge();
+
+// Initialize autocomplete for prescription page
+initHerbAutocomplete('herbSearch','herbAutocomplete', (herb)=>{
+  document.getElementById('herbSearch').value = herb.name;
+});
+
+// Switch to patient page pre-fills search
+document.addEventListener('DOMContentLoaded', ()=>{
+  initPatientAutocomplete();
+  initHerbAutocompletePage();
+});
+</script>
+</body>
+</html>
