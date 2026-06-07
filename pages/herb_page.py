@@ -41,7 +41,11 @@ class HerbPage(QWidget):
 
         self.count_lbl = QLabel()
         self.count_lbl.setStyleSheet("font-size: 11px; color: #8D6E63;")
+        self.total_lbl = QLabel()
+        self.total_lbl.setStyleSheet("font-size: 13px; color: #7A4C32; font-weight: bold;")
         top.addStretch()
+        top.addWidget(self.total_lbl)
+        top.addSpacing(18)
         top.addWidget(self.count_lbl)
         layout.addLayout(top)
 
@@ -110,11 +114,11 @@ class HerbPage(QWidget):
         hh.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(4, 60)
         hh.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 85)
+        self.table.setColumnWidth(5, 170)
         hh.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(6, 60)
+        self.table.setColumnWidth(6, 120)
         hh.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(7, 65)
+        self.table.setColumnWidth(7, 130)
         hh.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(8, 70)
         hh.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
@@ -139,8 +143,11 @@ class HerbPage(QWidget):
             base_sql += " WHERE name LIKE ? OR alias LIKE ? OR supplier LIKE ? OR name2 LIKE ?"
             kw = f"%{self.search_keyword}%"
             params = [kw, kw, kw, kw]
-        cur.execute(f"SELECT COUNT(*) {base_sql}", params)
-        total = cur.fetchone()[0]
+        cur.execute(f"SELECT COUNT(*), COALESCE(SUM(purchase_price * stock_qty), 0) {base_sql}", params)
+        row = cur.fetchone()
+        total = row[0]
+        total_value = row[1]
+        self.total_lbl.setText(f"库存总值：¥{total_value:,.2f}")
         self.paginator.set_data(total)
         offset = (self.paginator.current_page - 1) * PAGE_SIZE
         cur.execute(

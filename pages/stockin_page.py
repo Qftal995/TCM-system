@@ -101,14 +101,16 @@ class StockinPage(QWidget):
         self.si_shelf.setMaximum(9999)
         self.si_shelf.setValue(365)
         self.si_shelf.setStyleSheet(input_style)
+        self.si_shelf.setReadOnly(True)
         self.si_expiry = QLineEdit()
         self.si_expiry.setStyleSheet(input_style)
-        self.si_expiry.setReadOnly(True)
         self.si_approver = QLineEdit("肖锋")
         self.si_approver.setStyleSheet(input_style)
 
-        self.si_shelf.valueChanged.connect(self._calc_expiry)
-        self.si_date.textChanged.connect(self._calc_expiry)
+        self._updating = False
+        self.si_shelf.valueChanged.connect(self._on_shelf_changed)
+        self.si_date.textChanged.connect(self._on_date_changed)
+        self.si_expiry.textChanged.connect(self._on_expiry_changed)
 
         grid.addWidget(QLabel("入库数量(kg)"), 0, 0); grid.addWidget(self.si_qty, 0, 1)
         grid.addWidget(QLabel("进货单价"), 0, 2); grid.addWidget(self.si_price, 0, 3)
@@ -201,6 +203,49 @@ class StockinPage(QWidget):
             self.si_price.setValue(r["purchase_price"])
             self.si_shelf.setValue(r["shelf_life_days"])
             self._calc_expiry()
+
+    def _on_shelf_changed(self, _):
+        if self._updating:
+            return
+        self._updating = True
+        self._calc_expiry()
+        self._updating = False
+
+    def _on_date_changed(self, _):
+        if self._updating:
+            return
+        self._updating = True
+        try:
+            d = date.fromisoformat(self.si_date.text().strip())
+            expiry_text = self.si_expiry.text().strip()
+            if expiry_text:
+                exp = date.fromisoformat(expiry_text)
+                days = (exp - d).days
+                if days > 0:
+                    self.si_shelf.setValue(days)
+                else:
+                    self._calc_expiry()
+            else:
+                self._calc_expiry()
+        except Exception:
+            self._calc_expiry()
+        self._updating = False
+
+    def _on_expiry_changed(self, _):
+        if self._updating:
+            return
+        self._updating = True
+        try:
+            expiry_text = self.si_expiry.text().strip()
+            d = date.fromisoformat(self.si_date.text().strip())
+            if expiry_text:
+                exp = date.fromisoformat(expiry_text)
+                days = (exp - d).days
+                if days > 0:
+                    self.si_shelf.setValue(days)
+        except Exception:
+            pass
+        self._updating = False
 
     def _calc_expiry(self):
         try:

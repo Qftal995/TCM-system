@@ -210,8 +210,8 @@ class PatientPage(QWidget):
             cur = conn.cursor()
             visit_date = d.get("visit_date","") or date.today().isoformat()
             visit_month = visit_date[:7]
-            cur.execute("SELECT COUNT(*) as c FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
-            monthly_no = str(cur.fetchone()["c"] + 1).zfill(2)
+            cur.execute("SELECT COALESCE(MAX(CAST(monthly_no AS INTEGER)), 0) + 1 FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
+            monthly_no = str(cur.fetchone()[0]).zfill(2)
             cur.execute("INSERT INTO patients(name,phone,age,gender,occupation,address,condition,monthly_no,medical_record_no,visit_date,diagnosis,treatment,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,date('now'))",
                          [d["name"],d["phone"],d["age"],d["gender"],d["occupation"],d["address"],d["condition"],monthly_no,d["medical_record_no"],visit_date,d.get("diagnosis",""),d.get("treatment","")])
             conn.commit(); conn.close()
@@ -231,8 +231,12 @@ class PatientPage(QWidget):
             cur = conn.cursor()
             visit_date = d.get("visit_date","") or date.today().isoformat()
             visit_month = visit_date[:7]
-            cur.execute("SELECT COUNT(*) as c FROM patients WHERE substr(visit_date,1,7)=? AND id!=?", [visit_month, pid])
-            monthly_no = str(cur.fetchone()["c"] + 1).zfill(2)
+            old_month = (row["visit_date"] or "")[:7]
+            if old_month == visit_month:
+                monthly_no = (row["monthly_no"] or "").zfill(2)
+            else:
+                cur.execute("SELECT COALESCE(MAX(CAST(monthly_no AS INTEGER)), 0) + 1 FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
+                monthly_no = str(cur.fetchone()[0]).zfill(2)
             cur.execute("UPDATE patients SET name=?,phone=?,age=?,gender=?,occupation=?,address=?,condition=?,monthly_no=?,medical_record_no=?,visit_date=?,diagnosis=?,treatment=? WHERE id=?",
                          [d["name"],d["phone"],d["age"],d["gender"],d["occupation"],d["address"],d["condition"],monthly_no,d["medical_record_no"],visit_date,d.get("diagnosis",""),d.get("treatment",""),pid])
             conn.commit(); conn.close()

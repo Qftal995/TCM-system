@@ -227,7 +227,7 @@ class PrescPage(QWidget):
         conn = get_conn()
         cur = conn.cursor()
         kw = f"%{text}%"
-        cur.execute("SELECT name, phone, age, gender, occupation, address, condition, monthly_no, medical_record_no FROM patients WHERE name LIKE ? OR phone LIKE ? OR condition LIKE ? LIMIT 8", [kw, kw, kw])
+        cur.execute("SELECT name, phone, age, gender, occupation, address, condition, monthly_no, medical_record_no FROM patients WHERE name LIKE ? OR phone LIKE ? OR condition LIKE ? ORDER BY visit_date DESC, id DESC LIMIT 8", [kw, kw, kw])
         rows = cur.fetchall()
         conn.close()
         if not rows:
@@ -253,9 +253,8 @@ class PrescPage(QWidget):
         name = display.split("  ")[0].strip()
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM patients WHERE name=? LIMIT 1", [name])
+        cur.execute("SELECT * FROM patients WHERE name=? ORDER BY visit_date DESC, id DESC LIMIT 1", [name])
         pat = cur.fetchone()
-        conn.close()
         if pat:
             self.p_name.setText(pat["name"] or "")
             self.p_medical_no.setText(pat["medical_record_no"] or "")
@@ -266,8 +265,22 @@ class PrescPage(QWidget):
                 self.p_gender.setCurrentIndex(idx)
             self.p_occupation.setText(pat["occupation"] or "")
             self.p_address.setText(pat["address"] or "")
-            if not self.p_condition.text().strip():
-                self.p_condition.setText(pat["condition"] or "")
+            self.p_condition.setText(pat["condition"] or "")
+            self.p_diagnosis.setText(pat["diagnosis"] or "")
+            self.p_treatment.setText(pat["treatment"] or "")
+            # Load last prescription items
+            cur.execute("""
+                SELECT pi.herb_id, pi.herb_name, pi.actual_grams, pi.unit_price
+                FROM prescriptions p
+                JOIN prescription_items pi ON pi.prescription_id = p.id
+                WHERE p.patient_id IN (SELECT id FROM patients WHERE name=? ORDER BY visit_date DESC, id DESC LIMIT 1)
+                ORDER BY p.created_at DESC, pi.id
+            """, [name])
+            last_items = cur.fetchall()
+            if last_items:
+                self.presc_items = [[r["herb_id"], r["herb_name"], r["actual_grams"], r["unit_price"]] for r in last_items]
+                self._refresh()
+        conn.close()
         self._pat_dropdown.hide()
 
     def _load_formulas(self):
@@ -566,20 +579,11 @@ class PrescPage(QWidget):
             medical_no = self.p_medical_no.text().strip()
             today_str = date.today().isoformat()
             visit_month = today_str[:7]
-            cur.execute("SELECT id FROM patients WHERE name=? AND phone=?", [name, phone])
-            pat = cur.fetchone()
-            if pat:
-                pid = pat["id"]
-                cur.execute("SELECT COUNT(*) as c FROM patients WHERE substr(visit_date,1,7)=? AND id!=?", [visit_month, pid])
-                monthly_no = str(cur.fetchone()["c"] + 1).zfill(2)
-                cur.execute("UPDATE patients SET monthly_no=?,medical_record_no=?,occupation=?,age=?,gender=?,address=?,condition=?,diagnosis=?,treatment=?,visit_date=? WHERE id=?",
-                            [monthly_no, medical_no, occupation, age, gender, address, condition, diagnosis, treatment, today_str, pid])
-            else:
-                cur.execute("SELECT COUNT(*) as c FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
-                monthly_no = str(cur.fetchone()["c"] + 1).zfill(2)
-                cur.execute("INSERT INTO patients(name,phone,age,gender,occupation,address,condition,monthly_no,medical_record_no,diagnosis,treatment,visit_date,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,date('now'))",
-                            [name, phone, age, gender, occupation, address, condition, monthly_no, medical_no, diagnosis, treatment, today_str])
-                pid = cur.lastrowid
+            cur.execute("SELECT COALESCE(MAX(CAST(monthly_no AS INTEGER)), 0) + 1 FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
+            monthly_no = str(cur.fetchone()[0]).zfill(2)
+            cur.execute("INSERT INTO patients(name,phone,age,gender,occupation,address,condition,monthly_no,medical_record_no,diagnosis,treatment,visit_date,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,date('now'))",
+                        [name, phone, age, gender, occupation, address, condition, monthly_no, medical_no, diagnosis, treatment, today_str])
+            pid = cur.lastrowid
 
             for item in self.presc_items:
                 cur.execute("UPDATE herbs SET stock_qty = MAX(0, stock_qty - ?) WHERE id=?", [item[2] / 1000, item[0]])
