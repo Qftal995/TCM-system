@@ -18,6 +18,7 @@ class PrescPage(QWidget):
         super().__init__()
         self.presc_items = []  # [(herb_id, name, grams, unit_price)]
         self._selected_formula_id = 0
+        self._formula_cache = {}  # display_name -> formula_id
         self._building = False
         self._service_fee = 0
         self._load_service_fee()
@@ -136,17 +137,10 @@ class PrescPage(QWidget):
         ctrl = QHBoxLayout()
         ctrl.setSpacing(8)
         ctrl.addWidget(QLabel("快速选方剂："))
-        self.formula_combo = QComboBox()
-        self.formula_combo.setStyleSheet(
-            "QComboBox { padding: 7px 10px; border: 1px solid #C9B99A; border-radius: 3px; background: #FFFEF9; font-size: 12px; color: #3E2723; }"
-            "QComboBox:hover { border-color: #7A4C32; }"
-            "QComboBox QAbstractItemView { background: #FFFEF9; border: 1px solid #C9B99A; color: #3E2723; font-size: 12px; selection-background-color: #F5F0E8; selection-color: #3E2723; padding: 4px; outline: none; }"
-            "QComboBox::drop-down { border: none; width: 24px; }"
-            "QComboBox::down-arrow { image: none; border: none; }"
-        )
-        self.formula_combo.setMinimumWidth(200)
-        ctrl.addWidget(self.formula_combo)
-        apply_btn = QPushButton("套用方剂")
+        self.formula_search = SearchBox("搜方剂名称…", 200)
+        self.formula_search.set_search_fn(self._formula_search_fn)
+        ctrl.addWidget(self.formula_search)
+        apply_btn = QPushButton("套用")
         apply_btn.setStyleSheet("QPushButton { padding: 6px 12px; border: 1px solid #BCAAA4; border-radius: 3px; background: transparent; color: #5D4037; font-size: 11px; } QPushButton:hover { background: #F5F0E8; }")
         apply_btn.clicked.connect(self._apply_formula)
         ctrl.addWidget(apply_btn)
@@ -287,11 +281,21 @@ class PrescPage(QWidget):
         conn = get_conn()
         cur = conn.cursor()
         cur.execute("SELECT id, name FROM formulas ORDER BY id")
-        self.formula_combo.clear()
-        self.formula_combo.addItem("-- 手动选药 --", 0)
-        for row in cur.fetchall():
-            self.formula_combo.addItem(row["name"], row["id"])
+        self._formula_cache = {row["name"]: row["id"] for row in cur.fetchall()}
         conn.close()
+
+    def _formula_search_fn(self, text):
+        conn = get_conn()
+        cur = conn.cursor()
+        kw = f"%{text}%"
+        cur.execute("SELECT id, name FROM formulas WHERE name LIKE ? ORDER BY id LIMIT 8", [kw])
+        results = cur.fetchall()
+        conn.close()
+        display_names = []
+        for row in results:
+            display_names.append(row["name"])
+            self._formula_cache[row["name"]] = row["id"]
+        return display_names
 
     def _herb_search_fn(self, text):
         conn = get_conn()
@@ -348,8 +352,14 @@ class PrescPage(QWidget):
         self._refresh()
 
     def _apply_formula(self):
-        fid = self.formula_combo.currentData()
-        if not fid: return
+        name = self.formula_search.text()
+        if not name:
+            QMessageBox.warning(self, "提示", "请先搜索并选择方剂")
+            return
+        fid = self._formula_cache.get(name, 0)
+        if not fid:
+            QMessageBox.warning(self, "提示", "未找到该方剂，请从下拉列表中选择")
+            return
         if self.presc_items:
             ret = QMessageBox.question(self, "确认套用", f"当前已添加 {len(self.presc_items)} 味药材，套用方剂将清空列表，是否继续？", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if ret != QMessageBox.StandardButton.Yes:
@@ -362,7 +372,7 @@ class PrescPage(QWidget):
         if not items: return
         self.presc_items = [[r["herb_id"], r["name"], r["default_grams"], r["sell_price"]] for r in items]
         self._refresh()
-        QMessageBox.information(self, "提示", f"已套用方剂：{self.formula_combo.currentText()}")
+        QMessageBox.information(self, "提示", f"已套用方剂：{name}")
 
     def _refresh(self):
         self._building = True
@@ -494,7 +504,7 @@ class PrescPage(QWidget):
         self.p_condition.clear()
         self.p_diagnosis.clear()
         self.p_treatment.clear()
-        self.formula_combo.setCurrentIndex(0)
+        self.formula_search.setText("")
         self.herb_search.setText("")
         self.doses.setValue(7)
         self._load_service_fee()
@@ -590,7 +600,7 @@ class PrescPage(QWidget):
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
             cur.execute("INSERT INTO prescriptions(prescription_no,patient_id,formula_name,diagnosis,treatment,total_price,created_at) VALUES(?,?,?,?,?,?,?)",
-                        [presc_no, pid, self.formula_combo.currentText(), diagnosis, treatment, round(total, 2), now])
+                        [presc_no, pid, self.formula_search.text(), diagnosis, treatment, round(total, 2), now])
             presc_id = cur.lastrowid
             for item in self.presc_items:
                 cur.execute("INSERT INTO prescription_items(prescription_id,herb_id,herb_name,actual_grams,unit_price) VALUES(?,?,?,?,?)",

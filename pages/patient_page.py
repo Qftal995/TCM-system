@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 from database import get_conn
 from widgets.searchbox import SearchBox
 from widgets.paginator import Paginator
+from widgets.presc_preview import PrescPreview
 
 PAGE_SIZE = 28
 
@@ -276,16 +277,74 @@ class PatientPage(QWidget):
             tbl.setHorizontalHeaderLabels(["处方编号","方剂","诊断","门诊处理","总价","时间"])
             tbl.horizontalHeader().setStyleSheet("QHeaderView::section { background: #5C3322; color: #E8DFD2; padding: 6px; }")
             tbl.verticalHeader().setVisible(False)
+            tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
             tbl.setRowCount(len(prescs))
             for i, p in enumerate(prescs):
-                tbl.setItem(i, 0, QTableWidgetItem(p["prescription_no"]))
+                presc_no_item = QTableWidgetItem(p["prescription_no"])
+                presc_no_item.setData(Qt.ItemDataRole.UserRole, p["prescription_no"])
+                tbl.setItem(i, 0, presc_no_item)
                 tbl.setItem(i, 1, QTableWidgetItem(p["formula_name"] or ""))
                 tbl.setItem(i, 2, QTableWidgetItem(p["diagnosis"] or ""))
                 tbl.setItem(i, 3, QTableWidgetItem(p["treatment"] or ""))
                 tbl.setItem(i, 4, QTableWidgetItem(f"¥{p['total_price']:.2f}"))
                 tbl.setItem(i, 5, QTableWidgetItem(p["created_at"] or ""))
+            tbl.cellDoubleClicked.connect(lambda r, c: self._show_presc_detail_from_history(tbl.item(r, 0)))
             tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
             layout.addWidget(tbl)
+        close_btn = QPushButton("关闭")
+        close_btn.setStyleSheet("QPushButton { padding: 6px 20px; background: #7A4C32; color: #FFFEF9; border-radius: 3px; }")
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        dlg.exec()
+
+    def _show_presc_detail_from_history(self, item):
+        if item is None:
+            return
+        presc_no = item.data(Qt.ItemDataRole.UserRole)
+        if not presc_no:
+            return
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT p.*, pt.name as patient_name FROM prescriptions p LEFT JOIN patients pt ON p.patient_id=pt.id WHERE p.prescription_no=?", [presc_no])
+        p = cur.fetchone()
+        if not p: conn.close(); return
+        cur.execute("SELECT * FROM prescription_items WHERE prescription_id=?", [p["id"]])
+        items = cur.fetchall()
+        conn.close()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"处方详情 — {presc_no}")
+        dlg.setMinimumSize(520, 400)
+        dlg.setStyleSheet("QDialog { background: #FFFEF9; }")
+        layout = QVBoxLayout(dlg)
+        info = QLabel(f"编号：{p['prescription_no']} | 患者：{p['patient_name']} | 时间：{p['created_at']}\n诊断：{p['diagnosis'] or '-'} | 门诊处理：{p['treatment'] or '-'}")
+        info.setStyleSheet("color: #5D4037; font-size: 12px; margin-bottom: 8px;")
+        layout.addWidget(info)
+        preview = PrescPreview()
+        preview.set_items([(it["herb_name"], it["actual_grams"], it["unit_price"]) for it in items])
+        layout.addWidget(preview)
+        tbl = QTableWidget()
+        tbl.setColumnCount(4)
+        tbl.setHorizontalHeaderLabels(["药材","克数","单价","小计"])
+        tbl.horizontalHeader().setStyleSheet("QHeaderView::section { background: #5C3322; color: #E8DFD2; padding: 6px; font-size: 11px; }")
+        tbl.verticalHeader().setVisible(False)
+        tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        tbl.setRowCount(len(items))
+        total = 0
+        for i, it in enumerate(items):
+            sub = it["actual_grams"] * it["unit_price"]
+            total += sub
+            tbl.setItem(i, 0, QTableWidgetItem(it["herb_name"]))
+            tbl.setItem(i, 1, QTableWidgetItem(f"{it['actual_grams']}g"))
+            tbl.setItem(i, 2, QTableWidgetItem(f"¥{it['unit_price']:.2f}/g"))
+            tbl.setItem(i, 3, QTableWidgetItem(f"¥{sub:.2f}"))
+        tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(tbl)
+        total_lbl = QLabel(f"合计：¥{total:.2f}")
+        total_lbl.setStyleSheet("font-size: 14px; color: #3E2723; font-weight: bold; padding: 8px 0;")
+        total_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(total_lbl)
         close_btn = QPushButton("关闭")
         close_btn.setStyleSheet("QPushButton { padding: 6px 20px; background: #7A4C32; color: #FFFEF9; border-radius: 3px; }")
         close_btn.clicked.connect(dlg.accept)

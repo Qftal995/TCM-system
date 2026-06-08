@@ -97,34 +97,17 @@ class HerbPage(QWidget):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setStyleSheet("""
-            QTableWidget { background: #FFFEF9; border: 1px solid #D7CCC8; font-size: 12px; gridline-color: rgba(188,170,164,0.2); }
-            QTableWidget::item { padding: 6px 8px; color: #3E2723; }
+            QTableWidget { background: #FFFEF9; border: 1px solid #D7CCC8; font-size: 14px; gridline-color: rgba(188,170,164,0.2); }
+            QTableWidget::item { padding: 8px 10px; color: #3E2723; }
             QTableWidget::item:alternate { background: rgba(232,223,210,0.25); }
             QTableWidget::item:selected { background: rgba(200,164,92,0.15); color: #3E2723; }
         """)
         hh = self.table.horizontalHeader()
-        hh.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(0, 95)
-        hh.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(1, 65)
-        hh.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(2, 85)
-        hh.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(3, 65)
-        hh.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(4, 60)
-        hh.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 170)
-        hh.setSectionResizeMode(6, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(6, 120)
-        hh.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(7, 130)
-        hh.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(8, 70)
-        hh.setSectionResizeMode(9, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(9, 95)
-        hh.setSectionResizeMode(10, QHeaderView.ResizeMode.Stretch)
-        self.table.setColumnWidth(10, 65)
+        # All columns Stretch with base widths — extra space shared equally
+        widths = [110, 65, 120, 70, 65, 100, 85, 85, 75, 110, 70]
+        for col, w in enumerate(widths):
+            hh.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+            self.table.setColumnWidth(col, w)
         layout.addWidget(self.table, 1)
 
         # Paginator

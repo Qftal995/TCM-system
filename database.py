@@ -141,6 +141,8 @@ def init_db(seed=True):
     # Ensure default service_fee
     try:
         cur.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('service_fee','50')")
+        cur.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('alert_expiry_months','3')")
+        cur.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('alert_low_stock_kg','1.0')")
     except sqlite3.OperationalError:
         pass
     conn.commit()

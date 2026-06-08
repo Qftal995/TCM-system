@@ -93,21 +93,23 @@ class FormulaPage(QWidget):
         flayout.addLayout(fhead)
 
         self.formula_table = QTableWidget()
+        self.formula_table.setMouseTracking(True)
         self.formula_table.setColumnCount(5)
         self.formula_table.setHorizontalHeaderLabels(["序号","方剂名称","说明","分类","包含药材"])
         self.formula_table.horizontalHeader().setStyleSheet("QHeaderView::section { background: #5C3322; color: #E8DFD2; padding: 5px; font-size: 11px; border: none; }")
         self.formula_table.verticalHeader().setVisible(False)
         self.formula_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.formula_table.setMaximumHeight(220)
+        self.formula_table.setMaximumHeight(340)
         self.formula_table.setStyleSheet("QTableWidget { background: #FFFEF9; border: 1px solid #D7CCC8; font-size: 11px; } QTableWidget::item { padding: 3px 6px; }")
+        self.formula_table.cellDoubleClicked.connect(self._show_formula_detail)
+        self.formula_table.cellEntered.connect(self._on_formula_cell_entered)
         hh = self.formula_table.horizontalHeader()
         hh.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.formula_table.setColumnWidth(0, 40)
         hh.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.formula_table.setColumnWidth(1, 130)
+        self.formula_table.setColumnWidth(1, 260)
         hh.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        hh.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.formula_table.setColumnWidth(3, 70)
+        hh.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         hh.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         flayout.addWidget(self.formula_table)
         content.addWidget(fcard)
@@ -182,6 +184,12 @@ class FormulaPage(QWidget):
             else:
                 summary_item = QTableWidgetItem("—")
             self.formula_table.setItem(i, 4, summary_item)
+        # Center all formula table cells
+        for row in range(self.formula_table.rowCount()):
+            for col in range(self.formula_table.columnCount()):
+                item = self.formula_table.item(row, col)
+                if item:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Prescriptions
         cur.execute("SELECT COUNT(*) as c FROM prescriptions")
@@ -202,8 +210,84 @@ class FormulaPage(QWidget):
             self.presc_table.setItem(i, 5, QTableWidgetItem(p["treatment"] or ""))
             self.presc_table.setItem(i, 6, QTableWidgetItem(f"¥{p['total_price']:.2f}"))
             self.presc_table.setItem(i, 7, QTableWidgetItem(p["created_at"] or ""))
+        # Center all presc table cells except 诊断 (col 4)
+        for row in range(self.presc_table.rowCount()):
+            for col in range(self.presc_table.columnCount()):
+                if col == 4:
+                    continue
+                item = self.presc_table.item(row, col)
+                if item:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.count_lbl.setText(f"方剂 {len(formulas)} · 处方 {total}")
+
+    def _on_formula_cell_entered(self, row, col):
+        from PyQt6.QtGui import QCursor
+        from PyQt6.QtWidgets import QToolTip
+        item = self.formula_table.item(row, col)
+        if item and col == 4:
+            tt = item.toolTip()
+            if tt:
+                QToolTip.showText(QCursor.pos(), tt, self.formula_table)
+                return
+        QToolTip.hideText()
+
+    def _show_formula_detail(self, row, col):
+        from widgets.presc_preview import PrescPreview
+        if col != 1:
+            return
+        name = self.formula_table.item(row, 1)
+        if not name:
+            return
+        name = name.text()
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM formulas WHERE name=?", [name])
+        f = cur.fetchone()
+        if not f:
+            conn.close()
+            return
+        cur.execute("SELECT fi.default_grams, h.name, h.sell_price FROM formula_items fi JOIN herbs h ON fi.herb_id=h.id WHERE fi.formula_id=?", [f["id"]])
+        items = cur.fetchall()
+        conn.close()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"方剂详情 — {f['name']}")
+        dlg.setMinimumSize(450, 300)
+        dlg.setStyleSheet("QDialog { background: #FFFEF9; }")
+        layout = QVBoxLayout(dlg)
+        info = QLabel(f"名称：{f['name']}\n说明：{f['description'] or '-'}　|　分类：{f['category'] or '-'}")
+        info.setStyleSheet("color: #5D4037; font-size: 12px; margin-bottom: 8px;")
+        layout.addWidget(info)
+        preview = PrescPreview()
+        preview.set_items([(it["name"], it["default_grams"], it["sell_price"]) for it in items])
+        layout.addWidget(preview)
+        tbl = QTableWidget()
+        tbl.setColumnCount(4)
+        tbl.setHorizontalHeaderLabels(["药材","克数","单价","小计"])
+        tbl.horizontalHeader().setStyleSheet("QHeaderView::section { background: #5C3322; color: #E8DFD2; padding: 6px; font-size: 11px; }")
+        tbl.verticalHeader().setVisible(False)
+        tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        tbl.setRowCount(len(items))
+        total = 0
+        for i, it in enumerate(items):
+            sub = it["default_grams"] * it["sell_price"]
+            total += sub
+            tbl.setItem(i, 0, QTableWidgetItem(it["name"]))
+            tbl.setItem(i, 1, QTableWidgetItem(f"{it['default_grams']}g"))
+            tbl.setItem(i, 2, QTableWidgetItem(f"¥{it['sell_price']:.2f}/g"))
+            tbl.setItem(i, 3, QTableWidgetItem(f"¥{sub:.2f}"))
+        tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(tbl)
+        total_lbl = QLabel(f"单剂合计：¥{total:.2f}")
+        total_lbl.setStyleSheet("font-size: 14px; color: #3E2723; font-weight: bold; padding: 8px 0;")
+        total_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(total_lbl)
+        close_btn = QPushButton("关闭")
+        close_btn.setStyleSheet("QPushButton { padding: 6px 20px; background: #7A4C32; color: #FFFEF9; border-radius: 3px; }")
+        close_btn.clicked.connect(dlg.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        dlg.exec()
 
     # ── Formula CRUD ──
     def _add_formula(self):

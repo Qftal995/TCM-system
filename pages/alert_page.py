@@ -15,6 +15,8 @@ from database import get_conn
 class AlertPage(QWidget):
     def __init__(self):
         super().__init__()
+        self._alert_expiry_months = 3   # default
+        self._alert_low_stock_kg = 1.0  # default
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -29,6 +31,10 @@ class AlertPage(QWidget):
         sub.setStyleSheet("font-size: 11px; color: #8D6E63;")
         top.addWidget(sub)
         top.addStretch()
+        settings_btn = QPushButton("预警设置")
+        settings_btn.setStyleSheet("QPushButton { padding: 4px 12px; border: 1px solid #BCAAA4; border-radius: 3px; background: transparent; color: #5D4037; font-size: 11px; } QPushButton:hover { background: #F5F0E8; }")
+        settings_btn.clicked.connect(self._show_settings)
+        top.addWidget(settings_btn)
         refresh_btn = QPushButton("刷新")
         refresh_btn.setStyleSheet("QPushButton { padding: 4px 12px; border: 1px solid #BCAAA4; border-radius: 3px; background: transparent; color: #5D4037; font-size: 11px; } QPushButton:hover { background: #F5F0E8; }")
         refresh_btn.clicked.connect(self.load_data)
@@ -72,24 +78,34 @@ class AlertPage(QWidget):
         fl.addWidget(table)
         return {"frame": frame, "table": table}
 
+    def _load_alert_settings(self):
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT key, value FROM settings WHERE key IN ('alert_expiry_months', 'alert_low_stock_kg')")
+        for row in cur.fetchall():
+            if row["key"] == "alert_expiry_months":
+                self._alert_expiry_months = int(float(row["value"]))
+            elif row["key"] == "alert_low_stock_kg":
+                self._alert_low_stock_kg = float(row["value"])
+        conn.close()
+
     def load_data(self):
+        self._load_alert_settings()
         today = date.today().isoformat()
+        expiry_days = self._alert_expiry_months * 30
+        low_kg = self._alert_low_stock_kg
         conn = get_conn()
         cur = conn.cursor()
 
-        # Out of stock: stock_qty <= 0
         cur.execute("SELECT * FROM herbs WHERE stock_qty <= 0 ORDER BY name COLLATE NOCASE ASC")
         out = cur.fetchall()
 
-        # Low stock: 0 < stock_qty < 1 (1kg hardcoded threshold)
-        cur.execute("SELECT * FROM herbs WHERE stock_qty > 0 AND stock_qty < 1 ORDER BY name COLLATE NOCASE ASC")
+        cur.execute("SELECT * FROM herbs WHERE stock_qty > 0 AND stock_qty < ? ORDER BY name COLLATE NOCASE ASC", [low_kg])
         low = cur.fetchall()
 
-        # Near expiry: expiry_date >= today AND days left < 30
-        cur.execute("SELECT * FROM herbs WHERE expiry_date >= ? AND expiry_date != '' AND (julianday(expiry_date) - julianday(?)) < 30 ORDER BY expiry_date ASC", [today, today])
+        cur.execute("SELECT * FROM herbs WHERE expiry_date >= ? AND expiry_date != '' AND (julianday(expiry_date) - julianday(?)) < ? ORDER BY expiry_date ASC", [today, today, expiry_days])
         near = cur.fetchall()
 
-        # Expired: expiry_date < today AND not empty
         cur.execute("SELECT * FROM herbs WHERE expiry_date < ? AND expiry_date != '' ORDER BY expiry_date ASC", [today])
         expired = cur.fetchall()
 
@@ -155,6 +171,19 @@ class AlertPage(QWidget):
             act.addWidget(edit_btn)
             table.setCellWidget(i, 9, act_w)
 
+    def _show_settings(self):
+        self._load_alert_settings()
+        dlg = AlertSettingsDialog(self, self._alert_expiry_months, self._alert_low_stock_kg)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._alert_expiry_months = dlg.expiry_months
+            self._alert_low_stock_kg = dlg.low_stock_kg
+            conn = get_conn()
+            conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('alert_expiry_months',?)", [str(self._alert_expiry_months)])
+            conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('alert_low_stock_kg',?)", [str(self._alert_low_stock_kg)])
+            conn.commit()
+            conn.close()
+            self.load_data()
+
     def _edit_herb(self, hid):
         conn = get_conn()
         cur = conn.cursor()
@@ -174,6 +203,48 @@ class AlertPage(QWidget):
             conn.commit()
             conn.close()
             self.load_data()
+
+
+class AlertSettingsDialog(QDialog):
+    def __init__(self, parent, expiry_months=3, low_stock_kg=1.0):
+        super().__init__(parent)
+        self.setWindowTitle("预警阈值设置")
+        self.setMinimumWidth(320)
+        self.setStyleSheet("QDialog { background: #FFFEF9; }")
+        self.expiry_months = expiry_months
+        self.low_stock_kg = low_stock_kg
+
+        layout = QFormLayout(self)
+        self.w_expiry = QSpinBox()
+        self.w_expiry.setMinimum(1)
+        self.w_expiry.setMaximum(60)
+        self.w_expiry.setValue(expiry_months)
+        self.w_expiry.setSuffix(" 个月")
+        self.w_expiry.setStyleSheet("padding: 6px 10px; border: 1px solid #C9B99A; border-radius: 3px; background: #FFFEF9;")
+        layout.addRow("临期预警（效期前）", self.w_expiry)
+
+        self.w_low = QDoubleSpinBox()
+        self.w_low.setMinimum(0.1)
+        self.w_low.setMaximum(999999)
+        self.w_low.setDecimals(1)
+        self.w_low.setValue(low_stock_kg)
+        self.w_low.setSuffix(" kg")
+        self.w_low.setStyleSheet("padding: 6px 10px; border: 1px solid #C9B99A; border-radius: 3px; background: #FFFEF9;")
+        layout.addRow("库存不足阈值", self.w_low)
+
+        hint = QLabel("临期预警按月份折算天数（1月≈30天）")
+        hint.setStyleSheet("font-size: 10px; color: #8D6E63;")
+        layout.addRow(hint)
+
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(self._save)
+        btns.rejected.connect(self.reject)
+        layout.addRow(btns)
+
+    def _save(self):
+        self.expiry_months = self.w_expiry.value()
+        self.low_stock_kg = self.w_low.value()
+        self.accept()
 
 
 class AlertEditDialog(QDialog):
