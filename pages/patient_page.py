@@ -230,16 +230,9 @@ class PatientPage(QWidget):
             d = dlg.data
             conn = get_conn()
             cur = conn.cursor()
-            visit_date = d.get("visit_date","") or date.today().isoformat()
-            visit_month = visit_date[:7]
-            old_month = (row["visit_date"] or "")[:7]
-            if old_month == visit_month:
-                monthly_no = (row["monthly_no"] or "").zfill(2)
-            else:
-                cur.execute("SELECT COALESCE(MAX(CAST(monthly_no AS INTEGER)), 0) + 1 FROM patients WHERE substr(visit_date,1,7)=?", [visit_month])
-                monthly_no = str(cur.fetchone()[0]).zfill(2)
-            cur.execute("UPDATE patients SET name=?,phone=?,age=?,gender=?,occupation=?,address=?,condition=?,monthly_no=?,medical_record_no=?,visit_date=?,diagnosis=?,treatment=? WHERE id=?",
-                         [d["name"],d["phone"],d["age"],d["gender"],d["occupation"],d["address"],d["condition"],monthly_no,d["medical_record_no"],visit_date,d.get("diagnosis",""),d.get("treatment",""),pid])
+            monthly_no = (row["monthly_no"] or "").zfill(2)
+            cur.execute("UPDATE patients SET name=?,phone=?,age=?,gender=?,occupation=?,address=?,condition=?,monthly_no=?,medical_record_no=?,diagnosis=?,treatment=? WHERE id=?",
+                         [d["name"],d["phone"],d["age"],d["gender"],d["occupation"],d["address"],d["condition"],monthly_no,d["medical_record_no"],d.get("diagnosis",""),d.get("treatment",""),pid])
             conn.commit(); conn.close()
             self.load_data()
 
