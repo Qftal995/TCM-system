@@ -575,10 +575,10 @@ class PrescPage(QWidget):
                 hid, hname, grams, price = item
                 cur.execute("SELECT stock_qty FROM herbs WHERE id=?", [hid])
                 row = cur.fetchone()
-                need_kg = grams / 1000
+                need_kg = grams * doses / 1000
                 if not row or row["stock_qty"] < need_kg:
                     stock_kg = row['stock_qty'] if row else 0
-                    QMessageBox.warning(self, "提示", f"药材「{hname}」库存不足（当前{stock_kg:.2f}kg，需要{grams}g={need_kg:.3f}kg）")
+                    QMessageBox.warning(self, "提示", f"药材「{hname}」库存不足（当前{stock_kg:.2f}kg，需要{grams}g×{doses}剂={need_kg:.3f}kg）")
                     return
 
             phone = self.p_phone.text().strip()
@@ -596,11 +596,11 @@ class PrescPage(QWidget):
             pid = cur.lastrowid
 
             for item in self.presc_items:
-                cur.execute("UPDATE herbs SET stock_qty = MAX(0, stock_qty - ?) WHERE id=?", [item[2] / 1000, item[0]])
+                cur.execute("UPDATE herbs SET stock_qty = MAX(0, stock_qty - ?) WHERE id=?", [item[2] * doses / 1000, item[0]])
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            cur.execute("INSERT INTO prescriptions(prescription_no,patient_id,formula_name,diagnosis,treatment,total_price,created_at) VALUES(?,?,?,?,?,?,?)",
-                        [presc_no, pid, self.formula_search.text(), diagnosis, treatment, round(total, 2), now])
+            cur.execute("INSERT INTO prescriptions(prescription_no,patient_id,formula_name,diagnosis,treatment,total_price,created_at,doses) VALUES(?,?,?,?,?,?,?,?)",
+                        [presc_no, pid, self.formula_search.text(), diagnosis, treatment, round(total, 2), now, doses])
             presc_id = cur.lastrowid
             for item in self.presc_items:
                 cur.execute("INSERT INTO prescription_items(prescription_id,herb_id,herb_name,actual_grams,unit_price) VALUES(?,?,?,?,?)",
