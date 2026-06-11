@@ -142,7 +142,9 @@ class SearchBox(QWidget):
         self._suggest_timer.stop()
         self._reset_timer.stop()
         self.dropdown.hide()
+        self.input.blockSignals(True)
         self.input.setText(txt)
+        self.input.blockSignals(False)
 
     def hide_dropdown(self):
         self.dropdown.hide()

@@ -1,10 +1,21 @@
-"""方子预览网格 — 4列药材名+克数"""
+"""方子预览网格 — 4列药材名+克数，点击弹出删除"""
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 
+class _ClickableFrame(QFrame):
+    clicked = pyqtSignal()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+
 class PrescPreview(QWidget):
+    herb_clicked = pyqtSignal(int)
+
     def __init__(self):
         super().__init__()
         self.setStyleSheet("""
@@ -48,18 +59,20 @@ class PrescPreview(QWidget):
         for i, item in enumerate(items):
             name, grams = item[0], item[1]
 
-            card = QFrame()
+            card = _ClickableFrame()
+            card.setCursor(Qt.CursorShape.PointingHandCursor)
             card.setStyleSheet("""
-                QFrame {
+                _ClickableFrame {
                     background: rgba(255,255,255,0.7);
                     border: 1px solid rgba(188,170,164,0.25);
                     border-radius: 3px;
                 }
-                QFrame:hover {
+                _ClickableFrame:hover {
                     background: rgba(200,164,92,0.08);
                     border-color: rgba(200,164,92,0.3);
                 }
             """)
+            card.clicked.connect(lambda idx=i: self.herb_clicked.emit(idx))
             card_layout = QGridLayout(card)
             card_layout.setContentsMargins(6, 6, 6, 6)
             card_layout.setSpacing(2)

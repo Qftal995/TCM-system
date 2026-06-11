@@ -131,6 +131,7 @@ class PrescPage(QWidget):
 
         # Preview
         self.preview = PrescPreview()
+        self.preview.herb_clicked.connect(self._on_preview_herb_clicked)
         presc_layout.addWidget(self.preview)
 
         # Controls
@@ -490,6 +491,19 @@ class PrescPage(QWidget):
             self.presc_items.pop(idx)
             self._refresh()
 
+    def _on_preview_herb_clicked(self, idx):
+        if idx < 0 or idx >= len(self.presc_items):
+            return
+        name = self.presc_items[idx][1]
+        msg = QMessageBox(self)
+        msg.setWindowTitle("操作")
+        msg.setText(f"药材「{name}」")
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.button(QMessageBox.StandardButton.Yes).setText("删除")
+        msg.button(QMessageBox.StandardButton.No).setText("返回")
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            self._remove_item(idx)
+
     def _safely_reset(self):
         self._pat_timer.stop()
         self._pat_dropdown.hide()
@@ -571,15 +585,20 @@ class PrescPage(QWidget):
             conn = get_conn()
             cur = conn.cursor()
 
+            # 一次性检查所有药材库存，收集不足项
+            shortage = []
             for item in self.presc_items:
                 hid, hname, grams, price = item
                 cur.execute("SELECT stock_qty FROM herbs WHERE id=?", [hid])
                 row = cur.fetchone()
                 need_kg = grams * doses / 1000
-                if not row or row["stock_qty"] < need_kg:
-                    stock_kg = row['stock_qty'] if row else 0
-                    QMessageBox.warning(self, "提示", f"药材「{hname}」库存不足（当前{stock_kg:.2f}kg，需要{grams}g×{doses}剂={need_kg:.3f}kg）")
-                    return
+                stock_kg = row['stock_qty'] if row else 0
+                if stock_kg < need_kg:
+                    need_g = grams * doses
+                    shortage.append(f"「{hname}」库存 {stock_kg*1000:.1f}g，需要 {need_g:.1f}g（{grams}g×{doses}剂）")
+            if shortage:
+                QMessageBox.warning(self, "库存不足", "以下药材库存不足，请更换：\n\n" + "\n".join(shortage))
+                return
 
             phone = self.p_phone.text().strip()
             age = int(self.p_age.text() or 0)
@@ -608,6 +627,9 @@ class PrescPage(QWidget):
 
             conn.commit()
             QMessageBox.information(self, "开方成功", f"{presc_no}\n合计 ¥{total:.2f}\n已自动扣减库存")
+            if conn:
+                conn.close()
+            self._safely_reset()
         except Exception as e:
             QMessageBox.critical(self, "保存失败", f"开方过程中出现错误：\n{str(e)}")
             if conn:
@@ -615,7 +637,4 @@ class PrescPage(QWidget):
                     conn.rollback()
                 except Exception:
                     pass
-        finally:
-            if conn:
                 conn.close()
-            self._safely_reset()
